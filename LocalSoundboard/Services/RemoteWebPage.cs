@@ -196,7 +196,7 @@ public static class RemoteWebPage
       position: relative;
     }
 
-    .search-box svg {
+    .search-icon {
       position: absolute;
       left: 14px;
       top: 50%;
@@ -204,6 +204,42 @@ public static class RemoteWebPage
       height: 20px;
       transform: translateY(-50%);
       color: var(--muted);
+      pointer-events: none;
+    }
+
+    .clear-search {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      min-width: 36px;
+      min-height: 36px;
+      padding: 0;
+      border-radius: 999px;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+
+    .clear-search.visible {
+      display: inline-flex;
+    }
+
+    .clear-search:hover {
+      color: var(--text);
+      transform: translateY(-50%);
+    }
+
+    .clear-search:active {
+      transform: translateY(calc(-50% + 1px));
+    }
+
+    .clear-search svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
       pointer-events: none;
     }
 
@@ -225,6 +261,7 @@ public static class RemoteWebPage
 
     .search-input {
       padding-left: 44px;
+      padding-right: 52px;
     }
 
     .actions {
@@ -424,13 +461,19 @@ public static class RemoteWebPage
         </div>
 
         <div class="controls">
-          <label class="search-box" aria-label="Search sounds">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8"></circle>
               <path d="m21 21-4.35-4.35"></path>
             </svg>
-            <input id="search" class="search-input" placeholder="Search sounds" autocomplete="off">
-          </label>
+            <input id="search" class="search-input" placeholder="Search sounds" autocomplete="off" aria-label="Search sounds">
+            <button id="clearSearch" class="clear-search" type="button" aria-label="Clear search">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
+          </div>
           <div class="actions">
             <button id="favorites" type="button">Favorites</button>
             <button id="rescan" type="button">Rescan</button>
@@ -483,6 +526,11 @@ public static class RemoteWebPage
     function setLoading(isLoading) {
       $('rescan').disabled = isLoading;
       $('search').disabled = isLoading;
+      $('clearSearch').disabled = isLoading;
+    }
+
+    function updateClearSearchButton() {
+      $('clearSearch').classList.toggle('visible', $('search').value.trim().length > 0);
     }
 
     function normalizeTags(tags) {
@@ -653,10 +701,23 @@ public static class RemoteWebPage
 
     let searchTimeout = 0;
     $('search').addEventListener('input', () => {
+      updateClearSearchButton();
       clearTimeout(searchTimeout);
       searchTimeout = window.setTimeout(() => {
         loadSounds().catch(err => setStatus(err.message));
       }, 120);
+    });
+
+    $('clearSearch').addEventListener('click', () => {
+      if (!$('search').value) {
+        return;
+      }
+
+      $('search').value = '';
+      $('search').focus();
+      updateClearSearchButton();
+      clearTimeout(searchTimeout);
+      loadSounds().catch(err => setStatus(err.message));
     });
 
     $('favorites').addEventListener('click', () => {
@@ -670,6 +731,7 @@ public static class RemoteWebPage
 
     const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     applyTheme(state.themeOverride || preferredTheme);
+    updateClearSearchButton();
 
     loadStatus()
       .then(loadSounds)
