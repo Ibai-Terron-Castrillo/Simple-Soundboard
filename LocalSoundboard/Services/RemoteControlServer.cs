@@ -97,6 +97,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
             library = _controller.LibraryStatusText,
             availableSounds = _controller.AvailableSoundCount,
             totalSounds = _controller.TotalSoundCount,
+            isDarkMode = _controller.IsDarkMode,
             pinRequired = !string.IsNullOrWhiteSpace(_controller.RemotePin),
             localOnlyWarning = "Remote control is intended for private local networks."
         }));

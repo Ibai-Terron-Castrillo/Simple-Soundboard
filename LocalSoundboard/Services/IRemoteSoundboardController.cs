@@ -10,6 +10,8 @@ public interface IRemoteSoundboardController
 
     int TotalSoundCount { get; }
 
+    bool IsDarkMode { get; }
+
     string RemotePin { get; }
 
     IReadOnlyList<SoundItem> GetSoundSnapshot();
