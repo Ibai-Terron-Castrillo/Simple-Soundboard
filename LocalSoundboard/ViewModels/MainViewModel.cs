@@ -9,7 +9,7 @@ using Forms = System.Windows.Forms;
 
 namespace LocalSoundboard.ViewModels;
 
-public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundboardController
+public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposable, IRemoteSoundboardController
 {
     private const string AllCategories = "All folders";
     private const string AllSoundsFilter = "All";
@@ -20,6 +20,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     private readonly AudioLibraryService _libraryService;
     private readonly PlaybackService _playbackService;
     private readonly SemaphoreSlim _remoteGate = new(1, 1);
+    private readonly SemaphoreSlim _settingsGate = new(1, 1);
+    private readonly CancellationTokenSource _lifetimeCts = new();
     private AppSettings _settings = new();
     private RemoteControlServer? _remoteControlServer;
     private string _libraryPath = string.Empty;
@@ -40,6 +42,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     private string _remoteStatusText = "Remote server inactive";
     private string _remoteUrl = "http://localhost:5050";
     private bool _isLoaded;
+    private bool _isDisposed;
 
     public MainViewModel(
         SettingsService settingsService,
@@ -59,7 +62,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         _selectedPlaybackModeOption = PlaybackModeOptions[0];
 
         BrowseFolderCommand = new AsyncRelayCommand(BrowseFolderAsync);
-        RescanCommand = new AsyncRelayCommand(RescanLibraryAsync, () => !IsBusy);
+        RescanCommand = new AsyncRelayCommand(() => RescanLibraryAsync(), () => !IsBusy);
         PlaySoundCommand = new AsyncRelayCommand(parameter => PlaySoundAsync(parameter as SoundItem), parameter => parameter is SoundItem sound && sound.IsAvailable);
         StopAllCommand = new RelayCommand(() => _playbackService.StopAll());
         ToggleFavoriteCommand = new AsyncRelayCommand(parameter => ToggleFavoriteAsync(parameter as SoundItem), parameter => parameter is SoundItem);
@@ -328,7 +331,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
 
     public async Task LoadAsync()
     {
-        _settings = await _settingsService.LoadAsync();
+        var cancellationToken = _lifetimeCts.Token;
+        _settings = await _settingsService.LoadAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
         LibraryPath = _settings.LibraryPath;
         RemoteServerEnabled = _settings.RemoteServerEnabled;
         StartRemoteServerAutomatically = _settings.StartRemoteServerAutomatically;
@@ -348,11 +354,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
 
         if (!string.IsNullOrWhiteSpace(LibraryPath))
         {
-            await RescanLibraryAsync();
+            await RescanLibraryAsync(cancellationToken);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         _isLoaded = true;
-        await ApplyRemoteServerStateAsync();
+        await ApplyRemoteServerStateAsync(cancellationToken: cancellationToken);
     }
 
     public IReadOnlyList<SoundItem> GetSoundSnapshot()
@@ -375,7 +382,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
 
     public async Task RescanFromRemoteAsync()
     {
-        await RunOnUiThreadAsync(RescanLibraryAsync);
+        await RunOnUiThreadAsync(() => RescanLibraryAsync());
     }
 
     public void StopAll()
@@ -385,14 +392,54 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
 
     public void Dispose()
     {
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        await SaveSettingsAsync(CancellationToken.None);
+        await _lifetimeCts.CancelAsync();
         _playbackService.PlaybackError -= HandlePlaybackError;
         _playbackService.Dispose();
+
+        var remoteGateTaken = false;
+        try
+        {
+            remoteGateTaken = await _remoteGate.WaitAsync(TimeSpan.FromSeconds(1));
+            if (_remoteControlServer is not null)
+            {
+                using var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                await _remoteControlServer.StopAsync(shutdownCts.Token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        finally
+        {
+            if (remoteGateTaken)
+            {
+                _remoteGate.Release();
+            }
+        }
+
+        _settingsGate.Dispose();
         if (_remoteControlServer is not null)
         {
-            _remoteControlServer.StopAsync().GetAwaiter().GetResult();
+            await _remoteControlServer.DisposeAsync();
         }
 
         _remoteGate.Dispose();
+        _lifetimeCts.Dispose();
     }
 
     private async Task<bool> PlayByIdCoreAsync(string id)
@@ -419,8 +466,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         return true;
     }
 
-    private async Task ApplyRemoteServerStateAsync(bool restart = false)
+    private async Task ApplyRemoteServerStateAsync(bool restart = false, CancellationToken cancellationToken = default)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         if (!_isLoaded || _remoteControlServer is null)
         {
             RemoteStatusText = RemoteServerEnabled
@@ -429,21 +481,32 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
             return;
         }
 
-        await _remoteGate.WaitAsync();
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCts.Token);
+        var token = linkedCts.Token;
+
+        await _remoteGate.WaitAsync(token);
         try
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             if (!RemoteServerEnabled)
             {
-                await _remoteControlServer.StopAsync();
+                await _remoteControlServer.StopAsync(token);
                 RemoteStatusText = "Remote server inactive";
                 RemoteUrl = $"http://localhost:{ServerPort}";
                 return;
             }
 
             RemoteStatusText = restart ? "Restarting remote server..." : "Starting remote server...";
-            await _remoteControlServer.StartAsync(ServerPort);
+            await _remoteControlServer.StartAsync(ServerPort, token);
             RemoteUrl = _remoteControlServer.DisplayUrl;
             RemoteStatusText = "Remote server active on private LAN";
+        }
+        catch (OperationCanceledException) when (_isDisposed || token.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -495,13 +558,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         await RescanLibraryAsync();
     }
 
-    private async Task RescanLibraryAsync()
+    private async Task RescanLibraryAsync(CancellationToken cancellationToken = default)
     {
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCts.Token);
+        var token = linkedCts.Token;
         IsBusy = true;
         try
         {
             StatusMessage = "Scanning library...";
-            var sounds = await _libraryService.ScanAsync(_settings);
+            var sounds = await _libraryService.ScanAsync(_settings, token);
+            token.ThrowIfCancellationRequested();
 
             Sounds.Clear();
             foreach (var sound in sounds)
@@ -512,8 +578,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
             RefreshCategories();
             RefreshCounts();
             SoundsView.Refresh();
-            await SaveSettingsAsync();
+            await SaveSettingsAsync(token);
             StatusMessage = $"{AvailableSoundCount} available sounds out of {TotalSoundCount} found.";
+        }
+        catch (OperationCanceledException) when (_isDisposed || token.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -532,7 +601,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
             return;
         }
 
-        await _playbackService.PlayAsync(sound, _settings.PlaybackMode);
+        await _playbackService.PlayAsync(sound, _settings.PlaybackMode, _lifetimeCts.Token);
         sound.LastPlayedUtc = DateTimeOffset.UtcNow;
         UpdateMetadata(sound);
 
@@ -662,15 +731,29 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         metadata.LastPlayedUtc = sound.LastPlayedUtc;
     }
 
-    private async Task SaveSettingsAsync()
+    private async Task SaveSettingsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await _settingsService.SaveAsync(_settings);
+            await _settingsGate.WaitAsync(cancellationToken);
+            try
+            {
+                await _settingsService.SaveAsync(_settings, cancellationToken);
+            }
+            finally
+            {
+                _settingsGate.Release();
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Could not save settings: {ex.Message}";
+            if (!_isDisposed)
+            {
+                StatusMessage = $"Could not save settings: {ex.Message}";
+            }
         }
     }
 

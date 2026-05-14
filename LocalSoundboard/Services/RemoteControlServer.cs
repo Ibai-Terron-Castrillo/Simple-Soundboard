@@ -14,6 +14,8 @@ namespace LocalSoundboard.Services;
 
 public sealed class RemoteControlServer : IAsyncDisposable
 {
+    private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromMilliseconds(750);
+
     private readonly IRemoteSoundboardController _controller;
     private WebApplication? _app;
     private int _port;
@@ -45,6 +47,10 @@ public sealed class RemoteControlServer : IAsyncDisposable
 
         builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
         builder.Logging.ClearProviders();
+        builder.Services.Configure<HostOptions>(options =>
+        {
+            options.ShutdownTimeout = ShutdownTimeout;
+        });
         builder.Services.Configure<JsonOptions>(options =>
         {
             options.SerializerOptions.WriteIndented = false;
@@ -67,8 +73,20 @@ public sealed class RemoteControlServer : IAsyncDisposable
 
         var app = _app;
         _app = null;
-        await app.StopAsync(cancellationToken);
-        await app.DisposeAsync();
+        using var shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        shutdownCts.CancelAfter(ShutdownTimeout);
+
+        try
+        {
+            await app.StopAsync(shutdownCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            await app.DisposeAsync();
+        }
     }
 
     public async ValueTask DisposeAsync()

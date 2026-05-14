@@ -8,6 +8,8 @@ namespace LocalSoundboard;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
+    private bool _isClosing;
+    private bool _isDisposed;
 
     public MainWindow()
     {
@@ -26,14 +28,46 @@ public partial class MainWindow : Window
 
     private async void HandleLoaded(object sender, RoutedEventArgs e)
     {
-        await _viewModel.LoadAsync();
-        ThemeManager.Apply(this, _viewModel.IsDarkMode);
+        try
+        {
+            await _viewModel.LoadAsync();
+            if (!_isClosing)
+            {
+                ThemeManager.Apply(this, _viewModel.IsDarkMode);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
-    private void HandleClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    private async void HandleClosing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        if (_isClosing)
+        {
+            return;
+        }
+
+        _isClosing = true;
+        IsEnabled = false;
         _viewModel.PropertyChanged -= HandleViewModelPropertyChanged;
-        _viewModel.Dispose();
+
+        try
+        {
+            await _viewModel.DisposeAsync();
+        }
+        finally
+        {
+            _isDisposed = true;
+            Closing -= HandleClosing;
+            Close();
+        }
     }
 
     private void HandleViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
