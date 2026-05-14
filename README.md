@@ -18,6 +18,7 @@ Spanish version: [README.es.md](README.es.md)
 - Choose the audio output device.
 - Send audio to VB-Audio Virtual Cable.
 - Use exclusive playback or mix multiple sounds at once.
+- Switch between light mode and dark mode.
 - Control the app from a phone or tablet on the same local network.
 - Protect the remote control with an optional PIN.
 
@@ -150,6 +151,7 @@ LocalSoundboard remembers:
 - Recently played sounds.
 - Tags.
 - Playback mode.
+- Theme preference.
 - Remote server port.
 - Remote server startup setting.
 - Optional remote PIN.

@@ -31,6 +31,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     private double _volume = 0.85;
     private PlaybackModeOption _selectedPlaybackModeOption;
     private string _statusMessage = "Choose a sound folder to start.";
+    private bool _isDarkMode;
     private bool _isBusy;
     private bool _remoteServerEnabled;
     private bool _startRemoteServerAutomatically;
@@ -64,6 +65,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         ToggleFavoriteCommand = new AsyncRelayCommand(parameter => ToggleFavoriteAsync(parameter as SoundItem), parameter => parameter is SoundItem);
         SaveTagsCommand = new AsyncRelayCommand(SaveSelectedTagsAsync, () => SelectedSound is not null);
         RefreshDevicesCommand = new RelayCommand(RefreshOutputDevices);
+        ToggleThemeCommand = new RelayCommand(ToggleTheme);
     }
 
     public ObservableCollection<SoundItem> Sounds { get; } = [];
@@ -95,6 +97,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     public AsyncRelayCommand SaveTagsCommand { get; }
 
     public RelayCommand RefreshDevicesCommand { get; }
+
+    public RelayCommand ToggleThemeCommand { get; }
 
     public string LibraryPath
     {
@@ -279,6 +283,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         set => SetProperty(ref _statusMessage, value);
     }
 
+    public bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            if (SetProperty(ref _isDarkMode, value))
+            {
+                _settings.IsDarkMode = value;
+                OnPropertyChanged(nameof(ThemeToggleText));
+                _ = SaveSettingsAsync();
+            }
+        }
+    }
+
+    public string ThemeToggleText => IsDarkMode ? "Dark" : "Light";
+
     public bool IsBusy
     {
         get => _isBusy;
@@ -314,6 +334,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         StartRemoteServerAutomatically = _settings.StartRemoteServerAutomatically;
         ServerPort = _settings.ServerPort;
         RemotePin = _settings.RemotePin;
+        IsDarkMode = _settings.IsDarkMode;
 
         _volume = Math.Clamp(_settings.Volume, 0, 1);
         _playbackService.Volume = _volume;
@@ -431,6 +452,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
             OnPropertyChanged(nameof(RemoteServerEnabled));
             RemoteStatusText = $"Could not start the server: {ex.Message}";
         }
+    }
+
+    private void ToggleTheme()
+    {
+        IsDarkMode = !IsDarkMode;
     }
 
     private static Task RunOnUiThreadAsync(Func<Task> action)

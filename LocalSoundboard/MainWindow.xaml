@@ -9,35 +9,45 @@
         Width="1180"
         MinHeight="680"
         MinWidth="1040"
-        Background="#F4F6F8"
+        Background="{DynamicResource WindowBrush}"
         FontFamily="Segoe UI">
     <Window.Resources>
+        <SolidColorBrush x:Key="WindowBrush" Color="#F4F6F8" />
         <SolidColorBrush x:Key="TextBrush" Color="#17212B" />
         <SolidColorBrush x:Key="MutedBrush" Color="#667085" />
         <SolidColorBrush x:Key="LineBrush" Color="#D7DEE8" />
         <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
         <SolidColorBrush x:Key="SubtleBrush" Color="#EEF2F6" />
+        <SolidColorBrush x:Key="ButtonBrush" Color="#E7ECF2" />
+        <SolidColorBrush x:Key="ButtonHoverBrush" Color="#DDE5EE" />
+        <SolidColorBrush x:Key="ButtonPressedBrush" Color="#CBD5E1" />
         <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
         <SolidColorBrush x:Key="AccentHoverBrush" Color="#1D4ED8" />
         <SolidColorBrush x:Key="DangerBrush" Color="#DC2626" />
         <SolidColorBrush x:Key="DangerHoverBrush" Color="#B91C1C" />
         <SolidColorBrush x:Key="FavoriteBrush" Color="#D97706" />
+        <SolidColorBrush x:Key="FavoriteBackgroundBrush" Color="#FFF4DE" />
+        <SolidColorBrush x:Key="FavoriteBorderBrush" Color="#F8D8A5" />
+        <SolidColorBrush x:Key="SelectedItemBrush" Color="#EAF2FF" />
+        <SolidColorBrush x:Key="RemoteInfoBrush" Color="#EFF6FF" />
+        <SolidColorBrush x:Key="RemoteInfoBorderBrush" Color="#BFDBFE" />
+        <SolidColorBrush x:Key="IconBrush" Color="#17212B" />
 
         <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
 
         <Style x:Key="LabelText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Margin" Value="0,0,0,5" />
         </Style>
 
         <Style x:Key="PanelBorder" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="16" />
@@ -46,33 +56,33 @@
         <Style TargetType="TextBox">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="11,8" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
 
         <Style TargetType="ComboBox">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="8,6" />
-            <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         </Style>
 
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
 
         <Style TargetType="Button">
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Padding" Value="14,8" />
-            <Setter Property="Background" Value="#E7ECF2" />
-            <Setter Property="BorderBrush" Value="#E7ECF2" />
+            <Setter Property="Background" Value="{DynamicResource ButtonBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -91,12 +101,12 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#DDE5EE" />
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#DDE5EE" />
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ButtonHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#CBD5E1" />
-                                <Setter TargetName="Root" Property="BorderBrush" Value="#CBD5E1" />
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ButtonPressedBrush}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ButtonPressedBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.55" />
@@ -109,14 +119,14 @@
         </Style>
 
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="Foreground" Value="#FFFFFF" />
         </Style>
 
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource DangerBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+            <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
             <Setter Property="Foreground" Value="#FFFFFF" />
         </Style>
 
@@ -132,9 +142,9 @@
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsFavorite}" Value="True">
                     <Setter Property="Content" Value="Saved" />
-                    <Setter Property="Foreground" Value="{StaticResource FavoriteBrush}" />
-                    <Setter Property="Background" Value="#FFF4DE" />
-                    <Setter Property="BorderBrush" Value="#F8D8A5" />
+                    <Setter Property="Foreground" Value="{DynamicResource FavoriteBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource FavoriteBackgroundBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource FavoriteBorderBrush}" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -163,7 +173,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#EAF2FF" />
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource SelectedItemBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -180,8 +190,8 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource LineBrush}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource LineBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="24,18">
             <Grid>
@@ -195,7 +205,7 @@
                                FontSize="26"
                                FontWeight="SemiBold" />
                     <TextBlock Text="{Binding LibraryStatusText}"
-                               Foreground="{StaticResource MutedBrush}"
+                               Foreground="{DynamicResource MutedBrush}"
                                Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -203,6 +213,69 @@
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
+                    <Button Command="{Binding ToggleThemeCommand}"
+                            ToolTip="Toggle light and dark mode"
+                            Margin="0,0,10,0"
+                            MinWidth="92">
+                        <StackPanel Orientation="Horizontal">
+                            <Grid Width="16"
+                                  Height="16"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center">
+                                <Path Data="M8,3.2 A4.8,4.8 0,1 1 8,12.8 A4.8,4.8 0,1 1 8,3.2"
+                                      Stroke="{DynamicResource IconBrush}"
+                                      StrokeThickness="1.6"
+                                      Fill="Transparent">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDarkMode}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Data="M8,0.8 L8,2.1 M8,13.9 L8,15.2 M0.8,8 L2.1,8 M13.9,8 L15.2,8 M2.9,2.9 L3.8,3.8 M12.2,12.2 L13.1,13.1 M13.1,2.9 L12.2,3.8 M3.8,12.2 L2.9,13.1"
+                                      Stroke="{DynamicResource IconBrush}"
+                                      StrokeThickness="1.6"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Fill="Transparent">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDarkMode}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                                <Path Data="M12.9,10.4 C11.8,11.3 10.4,11.8 8.9,11.8 C5.7,11.8 3.2,9.3 3.2,6.1 C3.2,4.6 3.7,3.2 4.6,2.1 C2.3,2.8 0.8,4.9 0.8,7.3 C0.8,10.5 3.5,13.2 6.7,13.2 C9.1,13.2 11.2,11.7 12.9,10.4 Z"
+                                      Stroke="{DynamicResource IconBrush}"
+                                      StrokeThickness="1.6"
+                                      StrokeLineJoin="Round"
+                                      Fill="Transparent">
+                                    <Path.Style>
+                                        <Style TargetType="Path">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsDarkMode}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Path.Style>
+                                </Path>
+                            </Grid>
+                            <TextBlock Text="{Binding ThemeToggleText}"
+                                       Foreground="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Content="Choose Folder"
                             Command="{Binding BrowseFolderCommand}"
                             Style="{StaticResource PrimaryButton}"
@@ -271,10 +344,10 @@
                         <DataTemplate>
                             <Border Margin="6"
                                     Padding="12"
-                                    BorderBrush="{StaticResource LineBrush}"
+                                    BorderBrush="{DynamicResource LineBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
-                                    Background="{StaticResource SurfaceBrush}">
+                                    Background="{DynamicResource SurfaceBrush}">
                                 <Border.Style>
                                     <Style TargetType="Border">
                                         <Setter Property="Opacity" Value="1" />
@@ -308,17 +381,17 @@
                                                    FontWeight="SemiBold"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding RelativePath}"
-                                                   Foreground="{StaticResource MutedBrush}"
+                                                   Foreground="{DynamicResource MutedBrush}"
                                                    FontSize="12"
                                                    TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding TagsText}"
-                                                   Foreground="{StaticResource AccentBrush}"
+                                                   Foreground="{DynamicResource AccentBrush}"
                                                    FontSize="12"
                                                    TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
 
                                     <Border Grid.Column="2"
-                                            Background="{StaticResource SubtleBrush}"
+                                            Background="{DynamicResource SubtleBrush}"
                                             CornerRadius="5"
                                             Padding="8,4"
                                             VerticalAlignment="Center"
@@ -326,7 +399,7 @@
                                         <TextBlock Text="{Binding Extension}"
                                                    FontSize="12"
                                                    FontWeight="SemiBold"
-                                                   Foreground="{StaticResource MutedBrush}" />
+                                                   Foreground="{DynamicResource MutedBrush}" />
                                     </Border>
 
                                     <Button Grid.Column="3"
@@ -377,7 +450,7 @@
                             <TextBlock Text="Volume" Style="{StaticResource LabelText}" />
                             <TextBlock Grid.Column="1"
                                        Text="{Binding VolumePercentText}"
-                                       Foreground="{StaticResource MutedBrush}"
+                                       Foreground="{DynamicResource MutedBrush}"
                                        FontSize="12" />
                         </Grid>
 
@@ -406,7 +479,7 @@
                                    FontWeight="SemiBold"
                                    Margin="0,0,0,5" />
                         <TextBlock Text="{Binding SelectedSound.RelativePath}"
-                                   Foreground="{StaticResource MutedBrush}"
+                                   Foreground="{DynamicResource MutedBrush}"
                                    FontSize="12"
                                    Margin="0,0,0,12" />
 
@@ -437,18 +510,18 @@
                         <TextBlock Text="Optional PIN" Style="{StaticResource LabelText}" />
                         <TextBox Text="{Binding RemotePin, UpdateSourceTrigger=PropertyChanged}"
                                  Margin="0,0,0,12" />
-                        <Border Background="#EFF6FF"
-                                BorderBrush="#BFDBFE"
+                        <Border Background="{DynamicResource RemoteInfoBrush}"
+                                BorderBrush="{DynamicResource RemoteInfoBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="7"
                                 Padding="10">
                             <StackPanel>
                                 <TextBlock Text="{Binding RemoteStatusText}"
-                                           Foreground="{StaticResource MutedBrush}"
+                                           Foreground="{DynamicResource MutedBrush}"
                                            FontSize="12"
                                            Margin="0,0,0,4" />
                                 <TextBlock Text="{Binding RemoteUrl}"
-                                           Foreground="{StaticResource AccentBrush}"
+                                           Foreground="{DynamicResource AccentBrush}"
                                            FontWeight="SemiBold"
                                            TextTrimming="CharacterEllipsis" />
                             </StackPanel>
@@ -459,8 +532,8 @@
         </Grid>
 
         <Border Grid.Row="2"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource LineBrush}"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource LineBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="24,10">
             <Grid>
@@ -470,34 +543,34 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="{Binding StatusMessage}"
-                           Foreground="{StaticResource MutedBrush}"
+                           Foreground="{DynamicResource MutedBrush}"
                            VerticalAlignment="Center" />
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal">
-                    <Border Background="{StaticResource SubtleBrush}"
+                    <Border Background="{DynamicResource SubtleBrush}"
                             CornerRadius="5"
                             Padding="9,4"
                             Margin="0,0,8,0">
                         <TextBlock Text="{Binding AvailableSoundCount, StringFormat={}{0} available}"
-                                   Foreground="{StaticResource MutedBrush}"
+                                   Foreground="{DynamicResource MutedBrush}"
                                    FontSize="12"
                                    FontWeight="SemiBold" />
                     </Border>
-                    <Border Background="{StaticResource SubtleBrush}"
+                    <Border Background="{DynamicResource SubtleBrush}"
                             CornerRadius="5"
                             Padding="9,4"
                             Margin="0,0,8,0">
                         <TextBlock Text="{Binding FavoriteSoundCount, StringFormat={}{0} favorites}"
-                                   Foreground="{StaticResource MutedBrush}"
+                                   Foreground="{DynamicResource MutedBrush}"
                                    FontSize="12"
                                    FontWeight="SemiBold" />
                     </Border>
-                    <Border Background="{StaticResource SubtleBrush}"
+                    <Border Background="{DynamicResource SubtleBrush}"
                             CornerRadius="5"
                             Padding="9,4">
                         <TextBlock Text="{Binding TotalSoundCount, StringFormat={}{0} total}"
-                                   Foreground="{StaticResource MutedBrush}"
+                                   Foreground="{DynamicResource MutedBrush}"
                                    FontSize="12"
                                    FontWeight="SemiBold" />
                     </Border>

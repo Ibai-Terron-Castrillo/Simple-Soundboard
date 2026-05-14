@@ -10,6 +10,8 @@ public sealed class AppSettings
 
     public double Volume { get; set; } = 0.85;
 
+    public bool IsDarkMode { get; set; }
+
     public PlaybackMode PlaybackMode { get; set; } = PlaybackMode.Exclusive;
 
     public int ServerPort { get; set; } = 5050;

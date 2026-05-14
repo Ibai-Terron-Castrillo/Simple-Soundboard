@@ -18,6 +18,7 @@ English version: [README.md](README.md)
 - Elegir el dispositivo de salida de audio.
 - Enviar audio a VB-Audio Virtual Cable.
 - Usar modo exclusivo o mezclar varios sonidos a la vez.
+- Cambiar entre modo claro y modo oscuro.
 - Controlar la app desde una tablet o móvil en la misma red local.
 - Proteger el mando remoto con un PIN opcional.
 
@@ -150,6 +151,7 @@ LocalSoundboard recuerda:
 - Sonidos recientes.
 - Etiquetas.
 - Modo de reproducción.
+- Preferencia de tema.
 - Puerto del servidor remoto.
 - Opción de inicio del servidor remoto.
 - PIN remoto opcional.
