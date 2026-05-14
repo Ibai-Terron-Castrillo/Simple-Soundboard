@@ -120,11 +120,12 @@
                             </ToggleButton>
 
                             <TextBlock x:Name="ContentSite"
-                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Panel.ZIndex="1"
+                                       Foreground="{DynamicResource TextBrush}"
                                        HorizontalAlignment="Stretch"
                                        IsHitTestVisible="False"
                                        Margin="{TemplateBinding Padding}"
-                                       Text="{TemplateBinding SelectionBoxItem}"
+                                       Text="{Binding SelectionBoxItem, RelativeSource={RelativeSource TemplatedParent}}"
                                        TextTrimming="CharacterEllipsis"
                                        TextWrapping="NoWrap"
                                        VerticalAlignment="Center" />
