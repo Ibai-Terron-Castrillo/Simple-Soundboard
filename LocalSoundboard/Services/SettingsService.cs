@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using LocalSoundboard.Models;
 
 namespace LocalSoundboard.Services;
@@ -8,12 +9,11 @@ public sealed class SettingsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
-    public string AppDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "LocalSoundboard");
+    public string AppDirectory { get; } = ResolveAppDirectory();
 
     public string SettingsPath => Path.Combine(AppDirectory, "settings.json");
 
@@ -98,5 +98,18 @@ public sealed class SettingsService
             .ToList();
 
         return settings;
+    }
+
+    private static string ResolveAppDirectory()
+    {
+        var overrideRoot = Environment.GetEnvironmentVariable("LOCAL_SOUNDBOARD_APPDATA");
+        if (!string.IsNullOrWhiteSpace(overrideRoot))
+        {
+            return Path.Combine(AudioLibraryService.NormalizePath(overrideRoot), "LocalSoundboard");
+        }
+
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "LocalSoundboard");
     }
 }
