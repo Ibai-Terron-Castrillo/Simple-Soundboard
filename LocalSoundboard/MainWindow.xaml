@@ -119,15 +119,15 @@
                                 </ToggleButton.Template>
                             </ToggleButton>
 
-                            <ContentPresenter x:Name="ContentSite"
-                                              Content="{TemplateBinding SelectionBoxItem}"
-                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              HorizontalAlignment="Left"
-                                              IsHitTestVisible="False"
-                                              Margin="{TemplateBinding Padding}"
-                                              TextElement.Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
-                                              VerticalAlignment="Center" />
+                            <TextBlock x:Name="ContentSite"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
+                                       HorizontalAlignment="Stretch"
+                                       IsHitTestVisible="False"
+                                       Margin="{TemplateBinding Padding}"
+                                       Text="{TemplateBinding SelectionBoxItem}"
+                                       TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap"
+                                       VerticalAlignment="Center" />
 
                             <Popup x:Name="Popup"
                                    AllowsTransparency="True"
@@ -463,6 +463,7 @@
                     Style="{StaticResource PanelBorder}"
                     Padding="8">
                 <ListBox ItemsSource="{Binding SoundsView}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          SelectedItem="{Binding SelectedSound}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
@@ -539,121 +540,125 @@
                 </ListBox>
             </Border>
 
-            <StackPanel Grid.Row="0"
-                        Grid.RowSpan="2"
-                        Grid.Column="1">
-                <Border Style="{StaticResource PanelBorder}"
-                        Margin="0,0,0,14">
-                    <StackPanel>
-                        <TextBlock Text="Audio Output"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,12" />
+            <ScrollViewer Grid.Row="0"
+                          Grid.RowSpan="2"
+                          Grid.Column="1"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Style="{StaticResource PanelBorder}"
+                            Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Audio Output"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12" />
 
-                        <TextBlock Text="Device" Style="{StaticResource LabelText}" />
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <ComboBox ItemsSource="{Binding OutputDevices}"
-                                      SelectedItem="{Binding SelectedOutputDevice}"
-                                      DisplayMemberPath="DisplayName" />
-                            <Button Grid.Column="1"
-                                    Content="Reload"
-                                    Style="{StaticResource SmallButton}"
-                                    Command="{Binding RefreshDevicesCommand}"
-                                    Margin="8,0,0,0"
-                                    ToolTip="Refresh audio devices" />
-                        </Grid>
+                            <TextBlock Text="Device" Style="{StaticResource LabelText}" />
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox ItemsSource="{Binding OutputDevices}"
+                                          SelectedItem="{Binding SelectedOutputDevice}"
+                                          DisplayMemberPath="DisplayName" />
+                                <Button Grid.Column="1"
+                                        Content="Reload"
+                                        Style="{StaticResource SmallButton}"
+                                        Command="{Binding RefreshDevicesCommand}"
+                                        Margin="8,0,0,0"
+                                        ToolTip="Refresh audio devices" />
+                            </Grid>
 
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Volume" Style="{StaticResource LabelText}" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding VolumePercentText}"
-                                       Foreground="{DynamicResource MutedBrush}"
-                                       FontSize="12" />
-                        </Grid>
-
-                        <Slider Minimum="0"
-                                Maximum="1"
-                                TickFrequency="0.05"
-                                Value="{Binding Volume, UpdateSourceTrigger=PropertyChanged}"
-                                Margin="0,0,0,14" />
-
-                        <TextBlock Text="Playback mode" Style="{StaticResource LabelText}" />
-                        <ComboBox ItemsSource="{Binding PlaybackModeOptions}"
-                                  SelectedItem="{Binding SelectedPlaybackModeOption}"
-                                  DisplayMemberPath="Label" />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource PanelBorder}"
-                        Margin="0,0,0,14">
-                    <StackPanel>
-                        <TextBlock Text="Selection"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,12" />
-                        <TextBlock Text="{Binding SelectedSound.Name, TargetNullValue='Select a sound'}"
-                                   FontSize="16"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,5" />
-                        <TextBlock Text="{Binding SelectedSound.RelativePath}"
-                                   Foreground="{DynamicResource MutedBrush}"
-                                   FontSize="12"
-                                   Margin="0,0,0,12" />
-
-                        <TextBlock Text="Tags" Style="{StaticResource LabelText}" />
-                        <TextBox Text="{Binding SelectedSound.TagsText, UpdateSourceTrigger=PropertyChanged}"
-                                 AcceptsReturn="False"
-                                 ToolTip="Separate tags with commas." />
-                        <Button Content="Save Tags"
-                                Command="{Binding SaveTagsCommand}"
-                                Margin="0,10,0,0" />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource PanelBorder}">
-                    <StackPanel>
-                        <TextBlock Text="Remote Control"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,12" />
-                        <CheckBox Content="Remote server"
-                                  IsChecked="{Binding RemoteServerEnabled}" />
-                        <CheckBox Content="Start automatically"
-                                  IsChecked="{Binding StartRemoteServerAutomatically}"
-                                  Margin="0,0,0,12" />
-                        <TextBlock Text="Port" Style="{StaticResource LabelText}" />
-                        <TextBox Text="{Binding ServerPort, UpdateSourceTrigger=LostFocus}"
-                                 Margin="0,0,0,10" />
-                        <TextBlock Text="Optional PIN" Style="{StaticResource LabelText}" />
-                        <TextBox Text="{Binding RemotePin, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,12" />
-                        <Border Background="{DynamicResource RemoteInfoBrush}"
-                                BorderBrush="{DynamicResource RemoteInfoBorderBrush}"
-                                BorderThickness="1"
-                                CornerRadius="7"
-                                Padding="10">
-                            <StackPanel>
-                                <TextBlock Text="{Binding RemoteStatusText}"
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Volume" Style="{StaticResource LabelText}" />
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding VolumePercentText}"
                                            Foreground="{DynamicResource MutedBrush}"
-                                           FontSize="12"
-                                           Margin="0,0,0,4" />
-                                <TextBlock Text="{Binding RemoteUrl}"
-                                           Foreground="{DynamicResource AccentBrush}"
-                                           FontWeight="SemiBold"
-                                           TextTrimming="CharacterEllipsis" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
+                                           FontSize="12" />
+                            </Grid>
+
+                            <Slider Minimum="0"
+                                    Maximum="1"
+                                    TickFrequency="0.05"
+                                    Value="{Binding Volume, UpdateSourceTrigger=PropertyChanged}"
+                                    Margin="0,0,0,14" />
+
+                            <TextBlock Text="Playback mode" Style="{StaticResource LabelText}" />
+                            <ComboBox ItemsSource="{Binding PlaybackModeOptions}"
+                                      SelectedItem="{Binding SelectedPlaybackModeOption}"
+                                      DisplayMemberPath="Label" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource PanelBorder}"
+                            Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="Selection"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12" />
+                            <TextBlock Text="{Binding SelectedSound.Name, TargetNullValue='Select a sound'}"
+                                       FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,5" />
+                            <TextBlock Text="{Binding SelectedSound.RelativePath}"
+                                       Foreground="{DynamicResource MutedBrush}"
+                                       FontSize="12"
+                                       Margin="0,0,0,12" />
+
+                            <TextBlock Text="Tags" Style="{StaticResource LabelText}" />
+                            <TextBox Text="{Binding SelectedSound.TagsText, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="False"
+                                     ToolTip="Separate tags with commas." />
+                            <Button Content="Save Tags"
+                                    Command="{Binding SaveTagsCommand}"
+                                    Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource PanelBorder}">
+                        <StackPanel>
+                            <TextBlock Text="Remote Control"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,12" />
+                            <CheckBox Content="Remote server"
+                                      IsChecked="{Binding RemoteServerEnabled}" />
+                            <CheckBox Content="Start automatically"
+                                      IsChecked="{Binding StartRemoteServerAutomatically}"
+                                      Margin="0,0,0,12" />
+                            <TextBlock Text="Port" Style="{StaticResource LabelText}" />
+                            <TextBox Text="{Binding ServerPort, UpdateSourceTrigger=LostFocus}"
+                                     Margin="0,0,0,10" />
+                            <TextBlock Text="Optional PIN" Style="{StaticResource LabelText}" />
+                            <TextBox Text="{Binding RemotePin, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,0,0,12" />
+                            <Border Background="{DynamicResource RemoteInfoBrush}"
+                                    BorderBrush="{DynamicResource RemoteInfoBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="7"
+                                    Padding="10">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding RemoteStatusText}"
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               FontSize="12"
+                                               Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding RemoteUrl}"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <Border Grid.Row="2"
