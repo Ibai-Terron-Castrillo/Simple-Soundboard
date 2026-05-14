@@ -1,124 +1,122 @@
 # LocalSoundboard
 
-LocalSoundboard es una aplicacion de escritorio para Windows pensada para usar tus propios archivos de audio como soundboard en Discord, OBS, videojuegos o llamadas de voz.
+**LocalSoundboard** is a Windows desktop soundboard for people who want to play local audio files into Discord, OBS, games, calls, streams, or any other audio workflow.
 
-La idea es sencilla: el PC reproduce el audio, y opcionalmente una tablet o movil en la misma red local funciona como mando remoto. La tablet no envia audio ni necesita tener los archivos.
+The app runs on your PC. Your tablet or phone can be used as a local remote control, but it never sends audio. It only sends commands to the PC, and the PC plays the selected sound.
 
-## Funciones principales
+Spanish version: [README.es.md](README.es.md)
 
-- Biblioteca local desde una carpeta de audios.
-- Escaneo recursivo de `.mp3`, `.wav`, `.ogg`, `.flac` y `.m4a`.
-- Busqueda rapida por nombre, carpeta o etiqueta.
-- Filtros por carpeta, favoritos y recientes.
-- Favoritos persistentes.
-- Etiquetas simples separadas por coma.
-- Reproduccion en modo exclusivo o modo mezcla.
-- Boton `Stop All`.
-- Volumen general.
-- Selector de dispositivo de salida, incluido VB-Audio Virtual Cable si esta instalado.
-- Servidor remoto local opcional para controlar la soundboard desde tablet/movil.
-- PIN opcional para proteger el mando remoto dentro de la red local.
-- Configuracion persistente en JSON local.
-- Workflow de GitHub Actions para generar un ZIP portable Windows x64.
+## What You Can Do
 
-## Instalacion rapida
+- Pick a local folder with your sounds.
+- Scan subfolders automatically.
+- Use `.mp3`, `.wav`, `.ogg`, `.flac`, and `.m4a` files.
+- Search sounds by name, folder, or tag.
+- Filter by folder, favorites, and recently played sounds.
+- Play a sound with one click.
+- Stop everything instantly.
+- Choose the audio output device.
+- Send audio to VB-Audio Virtual Cable.
+- Use exclusive playback or mix multiple sounds at once.
+- Control the app from a phone or tablet on the same local network.
+- Protect the remote control with an optional PIN.
 
-1. Descarga el ZIP `LocalSoundboard-win-x64.zip` desde GitHub Releases.
-2. Extrae el ZIP en una carpeta, por ejemplo `C:\Apps\LocalSoundboard`.
-3. Ejecuta `LocalSoundboard.exe`.
-4. Pulsa `Carpeta` y selecciona la carpeta donde guardas tus audios.
-5. Elige el dispositivo de salida y ajusta el volumen.
+## Download and Run
 
-No hace falta instalar .NET si usas el ZIP generado por el workflow, porque el paquete es self-contained.
+1. Open the latest GitHub Release.
+2. Download `LocalSoundboard-win-x64.zip`.
+3. Extract the ZIP to a folder such as `C:\Apps\LocalSoundboard`.
+4. Run `LocalSoundboard.exe`.
 
-## Uso basico
+The release ZIP is self-contained, so you do not need to install .NET separately.
 
-1. Abre LocalSoundboard.
-2. Pulsa `Carpeta`.
-3. Selecciona una carpeta principal de audios.
-4. Usa `Buscar` para encontrar sonidos al instante.
-5. Pulsa `Play` para reproducir.
-6. Pulsa la estrella para marcar favoritos.
-7. Usa el filtro `Vista` para alternar entre todos, favoritos y recientes.
-8. Usa `Stop All` para detener cualquier reproduccion activa.
+## First Setup
 
-Si borras o mueves un archivo, al refrescar la biblioteca se marcara como no disponible.
+1. Click `Choose Folder`.
+2. Select the folder where your sound files are stored.
+3. Wait for the scan to finish.
+4. Pick an output device in the right panel.
+5. Adjust the main volume.
+6. Click `Play` on any sound.
 
-## Dispositivos de salida
+If a file is deleted or moved, refresh the library. LocalSoundboard will show it as unavailable until it is restored or removed from the saved library state.
 
-En el panel `Salida de audio` puedes elegir donde suena la soundboard.
+## Audio Output
 
-Opciones comunes:
+Use the output selector to decide where sounds are played.
 
-1. `Salida predeterminada de Windows`: reproduce por el dispositivo actual del sistema.
-2. Altavoces o auriculares concretos.
-3. `CABLE Input` de VB-Audio Virtual Cable, si lo tienes instalado.
+Common choices:
 
-El dispositivo elegido se recuerda para futuras ejecuciones. Si el dispositivo ya no existe, la app vuelve a la salida predeterminada.
+- `Windows default output`: plays through your current Windows output device.
+- Your speakers or headphones.
+- `CABLE Input`: sends audio into VB-Audio Virtual Cable.
 
-## Modo exclusivo y modo mezcla
+LocalSoundboard remembers your selected output device. If the device is unplugged or removed, the app falls back to the Windows default output.
 
-- `Exclusivo`: al reproducir un sonido, se corta el anterior.
-- `Mezcla`: permite varios sonidos a la vez.
+## Playback Modes
 
-Para directos y llamadas suele ser mas limpio empezar con `Exclusivo`. Para efectos superpuestos, usa `Mezcla`.
+- `Exclusive`: starting a sound stops the previous one.
+- `Mix`: several sounds can play at the same time.
 
-## Usarlo con Discord
+Exclusive mode is usually better for voice calls. Mix mode is useful for layered effects.
 
-La forma mas flexible es usar VB-Audio Virtual Cable.
+## Use With Discord
 
-1. Instala VB-Audio Virtual Cable desde su web oficial.
-2. Reinicia Windows si el instalador lo pide.
-3. En LocalSoundboard, elige `CABLE Input` como dispositivo de salida.
-4. En Discord, ve a `Ajustes de usuario > Voz y video`.
-5. En `Dispositivo de entrada`, elige `CABLE Output`.
-6. Ajusta volumen y sensibilidad en Discord.
+For Discord, the most common setup is VB-Audio Virtual Cable.
 
-Importante: con esta configuracion Discord escucha lo que LocalSoundboard envia al cable virtual. Si tambien quieres que escuche tu micro, necesitaras mezclar micro + cable con una herramienta como VoiceMeeter o una configuracion equivalente.
+1. Install VB-Audio Virtual Cable.
+2. Restart Windows if the installer asks you to.
+3. In LocalSoundboard, select `CABLE Input` as the output device.
+4. In Discord, open `User Settings > Voice & Video`.
+5. Set the input device to `CABLE Output`.
+6. Test a sound in LocalSoundboard.
 
-## Usarlo con OBS
+If you also want Discord to hear your microphone, you will need to mix your microphone and the virtual cable with a tool such as VoiceMeeter or an equivalent audio routing setup.
 
-Tienes dos opciones habituales.
+## Use With OBS
 
-### Opcion A: capturar el dispositivo virtual
+You can either capture the virtual cable or capture your desktop audio.
 
-1. En LocalSoundboard, elige `CABLE Input`.
-2. En OBS, crea una fuente `Captura de entrada de audio`.
-3. Selecciona `CABLE Output`.
-4. Ajusta filtros, monitorizacion y volumen en OBS.
+### Option 1: Virtual Cable
 
-### Opcion B: reproducir por el dispositivo de escritorio
+1. In LocalSoundboard, select `CABLE Input`.
+2. In OBS, add an `Audio Input Capture` source.
+3. Select `CABLE Output`.
+4. Adjust the volume and filters in OBS.
 
-1. En LocalSoundboard, elige tu salida normal de Windows.
-2. En OBS, captura el audio de escritorio.
+This is the recommended option if you want the soundboard on its own mixer channel.
 
-La opcion A da mas control porque la soundboard queda en una pista separada.
+### Option 2: Desktop Audio
 
-## Mando remoto desde tablet o movil
+1. In LocalSoundboard, select your normal Windows output.
+2. In OBS, capture desktop audio.
 
-LocalSoundboard puede levantar un servidor local. Esta pensado solo para redes privadas, por ejemplo tu Wi-Fi de casa o estudio.
+This is simpler, but gives you less control.
 
-1. Activa `Servidor remoto`.
-2. Deja el puerto `5050` o elige otro.
-3. Opcional: escribe un PIN.
-4. Mira la URL que aparece en la app, por ejemplo `http://192.168.1.34:5050`.
-5. Abre esa URL desde la tablet o movil conectado a la misma red.
+## Phone or Tablet Remote
 
-Desde la web remota puedes:
+LocalSoundboard can start a small local web server for remote control. This is designed for private local networks only, such as your home or studio Wi-Fi.
 
-- Ver sonidos.
-- Buscar.
-- Reproducir.
-- Parar todo.
-- Ver favoritos.
-- Refrescar biblioteca.
-- Marcar favoritos.
+1. Enable `Remote server`.
+2. Keep port `5050` or choose another port.
+3. Optional: set a PIN.
+4. Look at the URL shown in the app, such as `http://192.168.1.34:5050`.
+5. Open that URL on a phone or tablet connected to the same network.
 
-La web no transmite audio. Solo manda comandos al PC, y el PC reproduce el sonido.
+The remote page lets you:
 
-## API local
+- Search sounds.
+- Play sounds.
+- Stop all playback.
+- Filter favorites.
+- Mark favorites.
+- Rescan the library.
 
-Endpoints disponibles:
+The remote page does not upload or stream audio. Audio always plays on the PC.
+
+## Local API
+
+The remote control uses these endpoints:
 
 - `GET /api/status`
 - `GET /api/sounds`
@@ -127,43 +125,71 @@ Endpoints disponibles:
 - `POST /api/favorite/{id}`
 - `POST /api/rescan`
 
-Si configuras PIN, las rutas de API salvo `/api/status` esperan la cabecera:
+If a PIN is configured, API requests except `/api/status` must include:
 
 ```http
 X-Soundboard-Pin: 1234
 ```
 
-La API no permite reproducir rutas arbitrarias, borrar archivos ni acceder a archivos fuera de la biblioteca seleccionada.
+The API cannot play arbitrary file paths, delete files, or access audio outside the selected library folder.
 
-## Configuracion persistente
+## Settings Location
 
-La configuracion se guarda en:
+Settings are saved here:
 
 ```text
 %APPDATA%\LocalSoundboard\settings.json
 ```
 
-Se recuerdan:
+LocalSoundboard remembers:
 
-- Carpeta de biblioteca.
-- Dispositivo de salida.
-- Volumen.
-- Favoritos.
-- Recientes.
-- Etiquetas.
-- Modo de reproduccion.
-- Puerto remoto.
-- Estado de servidor remoto.
-- PIN remoto opcional.
+- Library folder.
+- Output device.
+- Volume.
+- Favorites.
+- Recently played sounds.
+- Tags.
+- Playback mode.
+- Remote server port.
+- Remote server startup setting.
+- Optional remote PIN.
 
-## Compilar desde codigo
+## Troubleshooting
 
-Requisitos:
+### VB-Audio Virtual Cable Does Not Appear
 
-- Windows 10/11.
-- .NET SDK 8 o superior.
+1. Make sure VB-Audio Virtual Cable is installed.
+2. Restart Windows.
+3. Click `Refresh devices` in LocalSoundboard.
+4. Look for a device named similar to `CABLE Input`.
 
-Comandos:
+### Discord Cannot Hear the Soundboard
+
+1. Select `CABLE Input` in LocalSoundboard.
+2. Select `CABLE Output` as the Discord input device.
+3. Check that LocalSoundboard volume is not muted.
+4. Temporarily adjust Discord noise suppression or input sensitivity if short sounds are being cut off.
+
+### The Phone or Tablet Cannot Connect
+
+1. Make sure the PC and the remote device are on the same network.
+2. Use the IP address shown in LocalSoundboard, not `localhost`.
+3. Allow LocalSoundboard through Windows Firewall if prompted.
+4. Check that the selected port is not already in use.
+
+### A Sound Does Not Play
+
+1. Check that the file still exists.
+2. Try opening it in another media player.
+3. If the file is corrupt, convert it again to `.wav` or `.mp3`.
+4. For `.flac` and `.m4a`, Windows media support may depend on installed codecs.
+
+## Build From Source
+
+Requirements:
+
+- Windows 10 or Windows 11.
+- .NET SDK 8 or later.
 
 ```powershell
 dotnet restore LocalSoundboard.sln
@@ -171,7 +197,7 @@ dotnet build LocalSoundboard.sln -c Release
 dotnet run --project LocalSoundboard/LocalSoundboard.csproj
 ```
 
-## Generar ZIP portable localmente
+## Create a Portable ZIP
 
 ```powershell
 dotnet publish LocalSoundboard/LocalSoundboard.csproj `
@@ -184,70 +210,15 @@ dotnet publish LocalSoundboard/LocalSoundboard.csproj `
 Compress-Archive -Path artifacts/publish/* -DestinationPath artifacts/LocalSoundboard-win-x64.zip -Force
 ```
 
-## Release en GitHub
+## Release Builds
 
-El workflow `.github/workflows/release.yml` genera el ZIP portable.
+The GitHub Actions workflow at `.github/workflows/release.yml` builds a Windows x64 portable ZIP.
 
-Puedes lanzarlo de dos formas:
-
-1. Desde la pestaña `Actions`, ejecutando `Build Windows Release`.
-2. Creando y subiendo un tag:
+To create a release:
 
 ```powershell
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-Cuando el workflow se ejecuta por tag, tambien crea una GitHub Release y adjunta `LocalSoundboard-win-x64.zip`.
-
-## Estructura del proyecto
-
-```text
-LocalSoundboard/
-  Infrastructure/   Comandos y base observable para WPF
-  Models/           Configuracion, sonidos y dispositivos
-  Services/         Escaneo, audio, settings y servidor remoto
-  ViewModels/       Logica de la ventana principal
-  App.xaml          Arranque WPF
-  MainWindow.xaml   Interfaz de escritorio
-.github/workflows/
-  release.yml       Build y release Windows x64
-```
-
-## Solucion de problemas
-
-### No aparece VB-Audio Virtual Cable
-
-1. Comprueba que VB-Audio Virtual Cable esta instalado.
-2. Reinicia Windows.
-3. Pulsa el boton de refrescar dispositivos en LocalSoundboard.
-4. Busca un dispositivo llamado parecido a `CABLE Input`.
-
-### Discord no recibe sonido
-
-1. En LocalSoundboard selecciona `CABLE Input`.
-2. En Discord selecciona `CABLE Output` como entrada.
-3. Desactiva temporalmente cancelacion de ruido o sensibilidad automatica si corta sonidos cortos.
-4. Revisa que el volumen de LocalSoundboard no este a cero.
-
-### La tablet no conecta
-
-1. Asegurate de que PC y tablet estan en la misma red.
-2. Usa la IP que muestra LocalSoundboard, no `localhost`.
-3. Comprueba que el firewall de Windows permite la aplicacion.
-4. Verifica que el puerto no esta ocupado por otra app.
-
-### Un archivo no reproduce
-
-1. Comprueba que el archivo existe.
-2. Prueba a abrirlo con otro reproductor.
-3. Si esta corrupto, conviertelo de nuevo a `.wav` o `.mp3`.
-4. Si es `.flac` o `.m4a`, Windows debe tener soporte Media Foundation para ese formato.
-
-## Limitaciones actuales
-
-- No incluye instalador MSI, solo ZIP portable.
-- El servidor remoto no esta pensado para Internet, solo LAN privada.
-- No hay mezclador avanzado por sonido individual.
-- No hay atajos globales de teclado todavia.
-- Las etiquetas son simples y se editan como texto separado por comas.
+When the tag workflow succeeds, GitHub creates a Release and attaches `LocalSoundboard-win-x64.zip`.
