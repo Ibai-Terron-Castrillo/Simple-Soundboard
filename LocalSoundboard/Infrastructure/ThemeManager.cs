@@ -43,8 +43,8 @@ public static class ThemeManager
     private static readonly Dictionary<string, MediaColor> DarkPalette = new()
     {
         ["WindowBrush"] = MediaColor.FromRgb(16, 23, 33),
-        ["TextBrush"] = MediaColor.FromRgb(235, 239, 245),
-        ["MutedBrush"] = MediaColor.FromRgb(151, 163, 181),
+        ["TextBrush"] = MediaColor.FromRgb(248, 250, 252),
+        ["MutedBrush"] = MediaColor.FromRgb(190, 202, 218),
         ["LineBrush"] = MediaColor.FromRgb(49, 61, 78),
         ["SurfaceBrush"] = MediaColor.FromRgb(24, 34, 48),
         ["SubtleBrush"] = MediaColor.FromRgb(36, 48, 64),
