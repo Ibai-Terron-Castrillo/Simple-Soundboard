@@ -83,7 +83,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
             if (RequiresPin(context) && !IsAuthorized(context))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                await context.Response.WriteAsJsonAsync(new { error = "PIN requerido o incorrecto" });
+                await context.Response.WriteAsJsonAsync(new { error = "PIN required or incorrect" });
                 return;
             }
 
@@ -98,7 +98,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
             availableSounds = _controller.AvailableSoundCount,
             totalSounds = _controller.TotalSoundCount,
             pinRequired = !string.IsNullOrWhiteSpace(_controller.RemotePin),
-            localOnlyWarning = "Control remoto pensado para redes locales privadas."
+            localOnlyWarning = "Remote control is intended for private local networks."
         }));
 
         app.MapGet("/api/sounds", (string? search, bool? favorites) =>
@@ -121,7 +121,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
         {
             return await _controller.PlayByIdAsync(id)
                 ? Results.Ok(new { ok = true })
-                : Results.NotFound(new { error = "Sonido no encontrado o no disponible" });
+                : Results.NotFound(new { error = "Sound not found or unavailable" });
         });
 
         app.MapPost("/api/stop", () =>
@@ -134,7 +134,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
         {
             return await _controller.ToggleFavoriteByIdAsync(id)
                 ? Results.Ok(new { ok = true })
-                : Results.NotFound(new { error = "Sonido no encontrado" });
+                : Results.NotFound(new { error = "Sound not found" });
         });
 
         app.MapPost("/api/rescan", async () =>

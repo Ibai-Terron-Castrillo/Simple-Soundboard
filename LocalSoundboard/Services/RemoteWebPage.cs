@@ -130,18 +130,18 @@ public static class RemoteWebPage
   <header>
     <h1>LocalSoundboard</h1>
     <div id="pinBox" class="pin">
-      <input id="pin" placeholder="PIN remoto" autocomplete="one-time-code">
+      <input id="pin" placeholder="Remote PIN" autocomplete="one-time-code">
       <button id="savePin" class="primary">OK</button>
     </div>
     <div class="toolbar">
-      <input id="search" placeholder="Buscar sonidos">
+      <input id="search" placeholder="Search sounds">
       <div class="actions">
-        <button id="favorites">Favoritos</button>
+        <button id="favorites">Favorites</button>
         <button id="rescan">Rescan</button>
         <button id="stop" class="danger">Stop</button>
       </div>
     </div>
-    <div id="status" class="status">Conectando...</div>
+    <div id="status" class="status">Connecting...</div>
   </header>
   <main id="sounds"></main>
   <script>
@@ -161,7 +161,7 @@ public static class RemoteWebPage
       });
       if (response.status === 401) {
         $('pinBox').classList.add('visible');
-        throw new Error('PIN requerido o incorrecto');
+        throw new Error('PIN required or incorrect');
       }
       if (!response.ok) throw new Error(await response.text());
       return response.headers.get('content-type')?.includes('application/json')
@@ -172,7 +172,7 @@ public static class RemoteWebPage
     async function loadStatus() {
       const status = await api('/api/status');
       $('pinBox').classList.toggle('visible', status.pinRequired);
-      setStatus(`${status.availableSounds}/${status.totalSounds} sonidos · ${status.library}`);
+      setStatus(`${status.availableSounds}/${status.totalSounds} sounds · ${status.library}`);
     }
 
     async function loadSounds() {
@@ -198,7 +198,7 @@ public static class RemoteWebPage
           </div>
           <div class="row">
             <button class="primary play">Play</button>
-            <button class="favorite fav">${sound.favorite ? '★' : '☆'}</button>
+            <button class="favorite fav">${sound.favorite ? 'Saved' : 'Fav'}</button>
           </div>`;
         card.querySelector('.name').textContent = sound.name;
         card.querySelector('.meta').textContent = `${sound.category} · ${sound.extension}`;
@@ -211,7 +211,7 @@ public static class RemoteWebPage
 
     async function play(id) {
       await api(`/api/play/${id}`, { method: 'POST' });
-      setStatus('Reproduciendo');
+      setStatus('Playing');
     }
     async function favorite(id) {
       await api(`/api/favorite/${id}`, { method: 'POST' });
@@ -219,10 +219,10 @@ public static class RemoteWebPage
     }
     async function stopAll() {
       await api('/api/stop', { method: 'POST' });
-      setStatus('Reproduccion detenida');
+      setStatus('Playback stopped');
     }
     async function rescan() {
-      setStatus('Escaneando...');
+      setStatus('Scanning...');
       await api('/api/rescan', { method: 'POST' });
       await loadSounds();
     }

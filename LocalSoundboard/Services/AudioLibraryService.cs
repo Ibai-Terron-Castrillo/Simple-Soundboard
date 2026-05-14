@@ -152,7 +152,7 @@ public sealed class AudioLibraryService
     private static string CreateCategory(string relativePath)
     {
         var directory = Path.GetDirectoryName(relativePath);
-        return string.IsNullOrWhiteSpace(directory) ? "Raiz" : directory;
+        return string.IsNullOrWhiteSpace(directory) ? "Root" : directory;
     }
 
     private static string CreateId(string normalizedPath)

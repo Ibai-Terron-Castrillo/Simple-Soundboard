@@ -36,7 +36,7 @@ public sealed class PlaybackService : IDisposable
     {
         var devices = new List<OutputDeviceInfo>
         {
-            new(-1, "Salida predeterminada de Windows")
+            new(-1, "Windows default output")
         };
 
         for (var index = 0; index < WaveOut.DeviceCount; index++)
@@ -126,7 +126,7 @@ public sealed class PlaybackService : IDisposable
     {
         if (!sound.IsAvailable || !File.Exists(sound.FullPath))
         {
-            RaisePlaybackError($"El archivo no está disponible: {sound.FileName}");
+            RaisePlaybackError($"The file is not available: {sound.FileName}");
             return;
         }
 
@@ -164,7 +164,7 @@ public sealed class PlaybackService : IDisposable
         catch (Exception ex)
         {
             session?.Dispose();
-            RaisePlaybackError($"No se pudo reproducir {sound.FileName}: {ex.Message}");
+            RaisePlaybackError($"Could not play {sound.FileName}: {ex.Message}");
         }
     }
 
@@ -191,7 +191,7 @@ public sealed class PlaybackService : IDisposable
 
         if (e.Exception is not null)
         {
-            RaisePlaybackError($"La reproducción se detuvo con error en {session.FileName}: {e.Exception.Message}");
+            RaisePlaybackError($"Playback stopped with an error in {session.FileName}: {e.Exception.Message}");
         }
     }
 

@@ -11,10 +11,10 @@ namespace LocalSoundboard.ViewModels;
 
 public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundboardController
 {
-    private const string AllCategories = "Todas";
-    private const string AllSoundsFilter = "Todos";
-    private const string FavoritesFilter = "Favoritos";
-    private const string RecentFilter = "Recientes";
+    private const string AllCategories = "All folders";
+    private const string AllSoundsFilter = "All";
+    private const string FavoritesFilter = "Favorites";
+    private const string RecentFilter = "Recent";
 
     private readonly SettingsService _settingsService;
     private readonly AudioLibraryService _libraryService;
@@ -30,13 +30,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     private OutputDeviceInfo? _selectedOutputDevice;
     private double _volume = 0.85;
     private PlaybackModeOption _selectedPlaybackModeOption;
-    private string _statusMessage = "Selecciona una carpeta de audios para empezar.";
+    private string _statusMessage = "Choose a sound folder to start.";
     private bool _isBusy;
     private bool _remoteServerEnabled;
     private bool _startRemoteServerAutomatically;
     private int _serverPort = 5050;
     private string _remotePin = string.Empty;
-    private string _remoteStatusText = "Servidor remoto inactivo";
+    private string _remoteStatusText = "Remote server inactive";
     private string _remoteUrl = "http://localhost:5050";
     private bool _isLoaded;
 
@@ -78,8 +78,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
 
     public ObservableCollection<PlaybackModeOption> PlaybackModeOptions { get; } =
     [
-        new("Exclusivo", PlaybackMode.Exclusive),
-        new("Mezcla", PlaybackMode.Mix)
+        new("Exclusive", PlaybackMode.Exclusive),
+        new("Mix", PlaybackMode.Mix)
     ];
 
     public AsyncRelayCommand BrowseFolderCommand { get; }
@@ -298,7 +298,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     public int FavoriteSoundCount => Sounds.Count(sound => sound.IsFavorite);
 
     public string LibraryStatusText => string.IsNullOrWhiteSpace(LibraryPath)
-        ? "Sin carpeta cargada"
+        ? "No folder loaded"
         : LibraryPath;
 
     public void AttachRemoteServer(RemoteControlServer remoteControlServer)
@@ -403,8 +403,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         if (!_isLoaded || _remoteControlServer is null)
         {
             RemoteStatusText = RemoteServerEnabled
-                ? "Servidor remoto pendiente de iniciar"
-                : "Servidor remoto inactivo";
+                ? "Remote server waiting to start"
+                : "Remote server inactive";
             return;
         }
 
@@ -414,22 +414,22 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
             if (!RemoteServerEnabled)
             {
                 await _remoteControlServer.StopAsync();
-                RemoteStatusText = "Servidor remoto inactivo";
+                RemoteStatusText = "Remote server inactive";
                 RemoteUrl = $"http://localhost:{ServerPort}";
                 return;
             }
 
-            RemoteStatusText = restart ? "Reiniciando servidor remoto..." : "Iniciando servidor remoto...";
+            RemoteStatusText = restart ? "Restarting remote server..." : "Starting remote server...";
             await _remoteControlServer.StartAsync(ServerPort);
             RemoteUrl = _remoteControlServer.DisplayUrl;
-            RemoteStatusText = "Servidor remoto activo en red local privada";
+            RemoteStatusText = "Remote server active on private LAN";
         }
         catch (Exception ex)
         {
             _settings.RemoteServerEnabled = false;
             _remoteServerEnabled = false;
             OnPropertyChanged(nameof(RemoteServerEnabled));
-            RemoteStatusText = $"No se pudo iniciar el servidor: {ex.Message}";
+            RemoteStatusText = $"Could not start the server: {ex.Message}";
         }
     }
 
@@ -453,7 +453,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
     {
         using var dialog = new Forms.FolderBrowserDialog
         {
-            Description = "Selecciona la carpeta principal de audios",
+            Description = "Choose the main sound folder",
             UseDescriptionForTitle = true,
             SelectedPath = Directory.Exists(LibraryPath) ? LibraryPath : string.Empty
         };
@@ -474,7 +474,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         IsBusy = true;
         try
         {
-            StatusMessage = "Escaneando biblioteca...";
+            StatusMessage = "Scanning library...";
             var sounds = await _libraryService.ScanAsync(_settings);
 
             Sounds.Clear();
@@ -487,11 +487,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
             RefreshCounts();
             SoundsView.Refresh();
             await SaveSettingsAsync();
-            StatusMessage = $"{AvailableSoundCount} audios disponibles de {TotalSoundCount} encontrados.";
+            StatusMessage = $"{AvailableSoundCount} available sounds out of {TotalSoundCount} found.";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"No se pudo escanear la biblioteca: {ex.Message}";
+            StatusMessage = $"Could not scan the library: {ex.Message}";
         }
         finally
         {
@@ -514,7 +514,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         _settings.RecentPaths.Insert(0, sound.FullPath);
         _settings.RecentPaths = _settings.RecentPaths.Take(100).ToList();
 
-        StatusMessage = $"Reproduciendo: {sound.FileName}";
+        StatusMessage = $"Playing: {sound.FileName}";
         RefreshCounts();
         SoundsView.Refresh();
         await SaveSettingsAsync();
@@ -554,7 +554,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
 
         UpdateMetadata(SelectedSound);
         SoundsView.Refresh();
-        StatusMessage = $"Etiquetas guardadas para {SelectedSound.FileName}.";
+        StatusMessage = $"Tags saved for {SelectedSound.FileName}.";
         await SaveSettingsAsync();
     }
 
@@ -644,7 +644,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundb
         }
         catch (Exception ex)
         {
-            StatusMessage = $"No se pudo guardar la configuracion: {ex.Message}";
+            StatusMessage = $"Could not save settings: {ex.Message}";
         }
     }
 
