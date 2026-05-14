@@ -116,6 +116,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
             availableSounds = _controller.AvailableSoundCount,
             totalSounds = _controller.TotalSoundCount,
             isDarkMode = _controller.IsDarkMode,
+            playbackPaused = _controller.IsPlaybackPaused,
             pinRequired = !string.IsNullOrWhiteSpace(_controller.RemotePin),
             localOnlyWarning = "Remote control is intended for private local networks."
         }));
@@ -147,6 +148,18 @@ public sealed class RemoteControlServer : IAsyncDisposable
         {
             _controller.StopAll();
             return Results.Ok(new { ok = true });
+        });
+
+        app.MapPost("/api/pause", () =>
+        {
+            _controller.PauseAll();
+            return Results.Ok(new { ok = true, playbackPaused = _controller.IsPlaybackPaused });
+        });
+
+        app.MapPost("/api/resume", () =>
+        {
+            _controller.ResumeAll();
+            return Results.Ok(new { ok = true, playbackPaused = _controller.IsPlaybackPaused });
         });
 
         app.MapPost("/api/favorite/{id}", async (string id) =>

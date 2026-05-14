@@ -408,6 +408,9 @@
                     <Button Content="Rescan"
                             Command="{Binding RescanCommand}"
                             Margin="0,0,10,0" />
+                    <Button Content="{Binding PauseResumeText}"
+                            Command="{Binding TogglePauseCommand}"
+                            Margin="0,0,10,0" />
                     <Button Content="Stop All"
                             Command="{Binding StopAllCommand}"
                             Style="{StaticResource DangerButton}" />

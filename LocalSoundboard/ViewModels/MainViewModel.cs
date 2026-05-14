@@ -41,6 +41,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     private string _remotePin = string.Empty;
     private string _remoteStatusText = "Remote server inactive";
     private string _remoteUrl = "http://localhost:5050";
+    private bool _isPlaybackPaused;
     private bool _isLoaded;
     private bool _isDisposed;
 
@@ -64,7 +65,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         BrowseFolderCommand = new AsyncRelayCommand(BrowseFolderAsync);
         RescanCommand = new AsyncRelayCommand(() => RescanLibraryAsync(), () => !IsBusy);
         PlaySoundCommand = new AsyncRelayCommand(parameter => PlaySoundAsync(parameter as SoundItem), parameter => parameter is SoundItem sound && sound.IsAvailable);
-        StopAllCommand = new RelayCommand(() => _playbackService.StopAll());
+        StopAllCommand = new RelayCommand(StopAll);
+        TogglePauseCommand = new RelayCommand(TogglePauseResume);
         ToggleFavoriteCommand = new AsyncRelayCommand(parameter => ToggleFavoriteAsync(parameter as SoundItem), parameter => parameter is SoundItem);
         SaveTagsCommand = new AsyncRelayCommand(SaveSelectedTagsAsync, () => SelectedSound is not null);
         RefreshDevicesCommand = new RelayCommand(RefreshOutputDevices);
@@ -94,6 +96,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     public AsyncRelayCommand PlaySoundCommand { get; }
 
     public RelayCommand StopAllCommand { get; }
+
+    public RelayCommand TogglePauseCommand { get; }
 
     public AsyncRelayCommand ToggleFavoriteCommand { get; }
 
@@ -286,6 +290,18 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         set => SetProperty(ref _statusMessage, value);
     }
 
+    public bool IsPlaybackPaused
+    {
+        get => _isPlaybackPaused;
+        private set
+        {
+            if (SetProperty(ref _isPlaybackPaused, value))
+            {
+                OnPropertyChanged(nameof(PauseResumeText));
+            }
+        }
+    }
+
     public bool IsDarkMode
     {
         get => _isDarkMode;
@@ -301,6 +317,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     }
 
     public string ThemeToggleText => IsDarkMode ? "Dark" : "Light";
+
+    public string PauseResumeText => IsPlaybackPaused ? "Resume" : "Pause";
 
     public bool IsBusy
     {
@@ -387,7 +405,43 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
 
     public void StopAll()
     {
-        _playbackService.StopAll();
+        RunOnUiThread(StopAllPlayback);
+    }
+
+    public void PauseAll()
+    {
+        RunOnUiThread(PauseAllPlayback);
+    }
+
+    public void ResumeAll()
+    {
+        RunOnUiThread(ResumeAllPlayback);
+    }
+
+    private void PauseAllPlayback()
+    {
+        if (_playbackService.PauseAll())
+        {
+            IsPlaybackPaused = true;
+            StatusMessage = "Playback paused.";
+            return;
+        }
+
+        IsPlaybackPaused = false;
+        StatusMessage = "No playback to pause.";
+    }
+
+    private void ResumeAllPlayback()
+    {
+        if (_playbackService.ResumeAll())
+        {
+            IsPlaybackPaused = false;
+            StatusMessage = "Playback resumed.";
+            return;
+        }
+
+        IsPlaybackPaused = false;
+        StatusMessage = "No paused playback to resume.";
     }
 
     public void Dispose()
@@ -522,12 +576,42 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         IsDarkMode = !IsDarkMode;
     }
 
+    private void TogglePauseResume()
+    {
+        if (IsPlaybackPaused)
+        {
+            ResumeAllPlayback();
+            return;
+        }
+
+        PauseAllPlayback();
+    }
+
+    private void StopAllPlayback()
+    {
+        _playbackService.StopAll();
+        IsPlaybackPaused = false;
+        StatusMessage = "Playback stopped.";
+    }
+
     private static Task RunOnUiThreadAsync(Func<Task> action)
     {
         var dispatcher = System.Windows.Application.Current.Dispatcher;
         return dispatcher.CheckAccess()
             ? action()
             : dispatcher.InvokeAsync(action).Task.Unwrap();
+    }
+
+    private static void RunOnUiThread(Action action)
+    {
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        if (dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        dispatcher.Invoke(action);
     }
 
     private static Task<T> RunOnUiThreadAsync<T>(Func<Task<T>> action)
@@ -602,6 +686,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         }
 
         await _playbackService.PlayAsync(sound, _settings.PlaybackMode, _lifetimeCts.Token);
+        IsPlaybackPaused = false;
         sound.LastPlayedUtc = DateTimeOffset.UtcNow;
         UpdateMetadata(sound);
 

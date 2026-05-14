@@ -11,10 +11,22 @@ public sealed class PlaybackService : IDisposable
     private readonly object _gate = new();
     private readonly List<PlaybackSession> _sessions = [];
     private double _volume = 0.85;
+    private bool _isPaused;
 
     public event EventHandler<string>? PlaybackError;
 
     public int DeviceNumber { get; private set; } = -1;
+
+    public bool IsPaused
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _isPaused;
+            }
+        }
+    }
 
     public double Volume
     {
@@ -99,6 +111,7 @@ public sealed class PlaybackService : IDisposable
         {
             sessions = [.. _sessions];
             _sessions.Clear();
+            _isPaused = false;
         }
 
         foreach (var session in sessions)
@@ -117,6 +130,66 @@ public sealed class PlaybackService : IDisposable
         }
     }
 
+    public bool PauseAll()
+    {
+        List<PlaybackSession> sessions;
+        lock (_gate)
+        {
+            sessions = [.. _sessions];
+            if (sessions.Count == 0)
+            {
+                _isPaused = false;
+                return false;
+            }
+
+            _isPaused = true;
+        }
+
+        foreach (var session in sessions)
+        {
+            try
+            {
+                session.Output.Pause();
+            }
+            catch
+            {
+                // Some drivers throw if the stream already stopped between snapshot and pause.
+            }
+        }
+
+        return true;
+    }
+
+    public bool ResumeAll()
+    {
+        List<PlaybackSession> sessions;
+        lock (_gate)
+        {
+            sessions = [.. _sessions];
+            if (sessions.Count == 0)
+            {
+                _isPaused = false;
+                return false;
+            }
+
+            _isPaused = false;
+        }
+
+        foreach (var session in sessions)
+        {
+            try
+            {
+                session.Output.Play();
+            }
+            catch
+            {
+                // Some drivers throw if the stream already stopped between snapshot and resume.
+            }
+        }
+
+        return true;
+    }
+
     public void Dispose()
     {
         StopAll();
@@ -133,6 +206,10 @@ public sealed class PlaybackService : IDisposable
         if (mode == PlaybackMode.Exclusive)
         {
             StopAll();
+        }
+        else if (IsPaused)
+        {
+            ResumeAll();
         }
 
         PlaybackSession? session = null;
@@ -157,6 +234,7 @@ public sealed class PlaybackService : IDisposable
             lock (_gate)
             {
                 _sessions.Add(session);
+                _isPaused = false;
             }
 
             output.Play();
@@ -178,6 +256,10 @@ public sealed class PlaybackService : IDisposable
             if (session is not null)
             {
                 _sessions.Remove(session);
+                if (_sessions.Count == 0)
+                {
+                    _isPaused = false;
+                }
             }
         }
 

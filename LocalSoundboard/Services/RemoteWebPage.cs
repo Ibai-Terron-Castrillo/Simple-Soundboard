@@ -266,7 +266,7 @@ public static class RemoteWebPage
 
     .actions {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -396,14 +396,14 @@ public static class RemoteWebPage
       font-weight: 700;
     }
 
-    @media (min-width: 760px) {
+    @media (min-width: 900px) {
       .controls {
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
       }
 
       .actions {
-        min-width: 382px;
+        min-width: 498px;
       }
     }
 
@@ -476,6 +476,7 @@ public static class RemoteWebPage
           </div>
           <div class="actions">
             <button id="favorites" type="button">Favorites</button>
+            <button id="pause" type="button">Pause</button>
             <button id="rescan" type="button">Rescan</button>
             <button id="stop" class="danger" type="button">Stop All</button>
           </div>
@@ -497,6 +498,7 @@ public static class RemoteWebPage
     const state = {
       sounds: [],
       favoritesOnly: false,
+      playbackPaused: false,
       pin: localStorage.getItem('localsoundboard-pin') || '',
       themeOverride: localStorage.getItem('localsoundboard-remote-theme') || ''
     };
@@ -531,6 +533,11 @@ public static class RemoteWebPage
 
     function updateClearSearchButton() {
       $('clearSearch').classList.toggle('visible', $('search').value.trim().length > 0);
+    }
+
+    function updatePauseButton() {
+      $('pause').textContent = state.playbackPaused ? 'Resume' : 'Pause';
+      $('pause').classList.toggle('primary', state.playbackPaused);
     }
 
     function normalizeTags(tags) {
@@ -574,6 +581,8 @@ public static class RemoteWebPage
       const status = await api('/api/status');
       $('pinBox').classList.toggle('visible', status.pinRequired);
       $('library').textContent = status.library || 'No folder loaded';
+      state.playbackPaused = Boolean(status.playbackPaused);
+      updatePauseButton();
       setCounts(status.availableSounds, status.totalSounds);
 
       if (!state.themeOverride) {
@@ -666,7 +675,23 @@ public static class RemoteWebPage
 
     async function stopAll() {
       await api('/api/stop', { method: 'POST' });
+      state.playbackPaused = false;
+      updatePauseButton();
       setStatus('Playback stopped');
+    }
+
+    async function pauseOrResume() {
+      const nextPaused = !state.playbackPaused;
+      const result = await api(nextPaused ? '/api/pause' : '/api/resume', { method: 'POST' });
+      state.playbackPaused = Boolean(result.playbackPaused);
+      updatePauseButton();
+      if (nextPaused && !state.playbackPaused) {
+        setStatus('No playback to pause');
+      } else if (!nextPaused && state.playbackPaused) {
+        setStatus('Could not resume playback');
+      } else {
+        setStatus(state.playbackPaused ? 'Playback paused' : 'Playback resumed');
+      }
     }
 
     async function rescan() {
@@ -727,11 +752,13 @@ public static class RemoteWebPage
     });
 
     $('stop').addEventListener('click', () => stopAll().catch(err => setStatus(err.message)));
+    $('pause').addEventListener('click', () => pauseOrResume().catch(err => setStatus(err.message)));
     $('rescan').addEventListener('click', () => rescan().catch(err => setStatus(err.message)));
 
     const preferredTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     applyTheme(state.themeOverride || preferredTheme);
     updateClearSearchButton();
+    updatePauseButton();
 
     loadStatus()
       .then(loadSounds)

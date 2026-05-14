@@ -12,6 +12,8 @@ public interface IRemoteSoundboardController
 
     bool IsDarkMode { get; }
 
+    bool IsPlaybackPaused { get; }
+
     string RemotePin { get; }
 
     IReadOnlyList<SoundItem> GetSoundSnapshot();
@@ -19,6 +21,10 @@ public interface IRemoteSoundboardController
     Task<bool> PlayByIdAsync(string id);
 
     void StopAll();
+
+    void PauseAll();
+
+    void ResumeAll();
 
     Task<bool> ToggleFavoriteByIdAsync(string id);
 
