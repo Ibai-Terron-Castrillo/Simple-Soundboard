@@ -15,6 +15,7 @@ public partial class MainWindow : Window
             new SettingsService(),
             new AudioLibraryService(),
             new PlaybackService());
+        _viewModel.AttachRemoteServer(new RemoteControlServer(_viewModel));
         DataContext = _viewModel;
         Loaded += HandleLoaded;
         Closing += HandleClosing;

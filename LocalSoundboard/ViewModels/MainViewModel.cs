@@ -9,7 +9,7 @@ using Forms = System.Windows.Forms;
 
 namespace LocalSoundboard.ViewModels;
 
-public sealed class MainViewModel : ObservableObject, IDisposable
+public sealed class MainViewModel : ObservableObject, IDisposable, IRemoteSoundboardController
 {
     private const string AllCategories = "Todas";
     private const string AllSoundsFilter = "Todos";
@@ -19,7 +19,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private readonly SettingsService _settingsService;
     private readonly AudioLibraryService _libraryService;
     private readonly PlaybackService _playbackService;
+    private readonly SemaphoreSlim _remoteGate = new(1, 1);
     private AppSettings _settings = new();
+    private RemoteControlServer? _remoteControlServer;
     private string _libraryPath = string.Empty;
     private string _searchText = string.Empty;
     private string _selectedCategory = AllCategories;
@@ -36,6 +38,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private string _remotePin = string.Empty;
     private string _remoteStatusText = "Servidor remoto inactivo";
     private string _remoteUrl = "http://localhost:5050";
+    private bool _isLoaded;
 
     public MainViewModel(
         SettingsService settingsService,
@@ -208,6 +211,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _settings.RemoteServerEnabled = value;
                 _ = SaveSettingsAsync();
+                _ = ApplyRemoteServerStateAsync();
             }
         }
     }
@@ -236,6 +240,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable
                 _settings.ServerPort = port;
                 RemoteUrl = $"http://localhost:{port}";
                 _ = SaveSettingsAsync();
+                if (RemoteServerEnabled)
+                {
+                    _ = ApplyRemoteServerStateAsync(restart: true);
+                }
             }
         }
     }
@@ -293,6 +301,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ? "Sin carpeta cargada"
         : LibraryPath;
 
+    public void AttachRemoteServer(RemoteControlServer remoteControlServer)
+    {
+        _remoteControlServer = remoteControlServer;
+    }
+
     public async Task LoadAsync()
     {
         _settings = await _settingsService.LoadAsync();
@@ -316,40 +329,32 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         {
             await RescanLibraryAsync();
         }
+
+        _isLoaded = true;
+        await ApplyRemoteServerStateAsync();
     }
 
     public IReadOnlyList<SoundItem> GetSoundSnapshot()
     {
-        return Sounds.ToList();
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        return dispatcher.CheckAccess()
+            ? Sounds.ToList()
+            : dispatcher.Invoke(() => Sounds.ToList());
     }
 
     public async Task<bool> PlayByIdAsync(string id)
     {
-        var sound = _libraryService.FindById(Sounds, id);
-        if (sound is null || !sound.IsAvailable)
-        {
-            return false;
-        }
-
-        await PlaySoundAsync(sound);
-        return true;
+        return await RunOnUiThreadAsync(() => PlayByIdCoreAsync(id));
     }
 
     public async Task<bool> ToggleFavoriteByIdAsync(string id)
     {
-        var sound = _libraryService.FindById(Sounds, id);
-        if (sound is null)
-        {
-            return false;
-        }
-
-        await ToggleFavoriteAsync(sound);
-        return true;
+        return await RunOnUiThreadAsync(() => ToggleFavoriteByIdCoreAsync(id));
     }
 
     public async Task RescanFromRemoteAsync()
     {
-        await RescanLibraryAsync();
+        await RunOnUiThreadAsync(RescanLibraryAsync);
     }
 
     public void StopAll()
@@ -361,6 +366,87 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         _playbackService.PlaybackError -= HandlePlaybackError;
         _playbackService.Dispose();
+        if (_remoteControlServer is not null)
+        {
+            _remoteControlServer.StopAsync().GetAwaiter().GetResult();
+        }
+
+        _remoteGate.Dispose();
+    }
+
+    private async Task<bool> PlayByIdCoreAsync(string id)
+    {
+        var sound = _libraryService.FindById(Sounds, id);
+        if (sound is null || !sound.IsAvailable)
+        {
+            return false;
+        }
+
+        await PlaySoundAsync(sound);
+        return true;
+    }
+
+    private async Task<bool> ToggleFavoriteByIdCoreAsync(string id)
+    {
+        var sound = _libraryService.FindById(Sounds, id);
+        if (sound is null)
+        {
+            return false;
+        }
+
+        await ToggleFavoriteAsync(sound);
+        return true;
+    }
+
+    private async Task ApplyRemoteServerStateAsync(bool restart = false)
+    {
+        if (!_isLoaded || _remoteControlServer is null)
+        {
+            RemoteStatusText = RemoteServerEnabled
+                ? "Servidor remoto pendiente de iniciar"
+                : "Servidor remoto inactivo";
+            return;
+        }
+
+        await _remoteGate.WaitAsync();
+        try
+        {
+            if (!RemoteServerEnabled)
+            {
+                await _remoteControlServer.StopAsync();
+                RemoteStatusText = "Servidor remoto inactivo";
+                RemoteUrl = $"http://localhost:{ServerPort}";
+                return;
+            }
+
+            RemoteStatusText = restart ? "Reiniciando servidor remoto..." : "Iniciando servidor remoto...";
+            await _remoteControlServer.StartAsync(ServerPort);
+            RemoteUrl = _remoteControlServer.DisplayUrl;
+            RemoteStatusText = "Servidor remoto activo en red local privada";
+        }
+        catch (Exception ex)
+        {
+            _settings.RemoteServerEnabled = false;
+            _remoteServerEnabled = false;
+            OnPropertyChanged(nameof(RemoteServerEnabled));
+            RemoteStatusText = $"No se pudo iniciar el servidor: {ex.Message}";
+        }
+    }
+
+    private static Task RunOnUiThreadAsync(Func<Task> action)
+    {
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        return dispatcher.CheckAccess()
+            ? action()
+            : dispatcher.InvokeAsync(action).Task.Unwrap();
+    }
+
+    private static Task<T> RunOnUiThreadAsync<T>(Func<Task<T>> action)
+    {
+        var dispatcher = System.Windows.Application.Current.Dispatcher;
+        return dispatcher.CheckAccess()
+            ? action()
+            : dispatcher.InvokeAsync(action).Task.Unwrap();
     }
 
     private async Task BrowseFolderAsync()
