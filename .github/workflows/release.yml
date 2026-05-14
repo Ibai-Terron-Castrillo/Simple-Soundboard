@@ -1,0 +1,60 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Windows x64 portable ZIP
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore LocalSoundboard.sln
+
+      - name: Build
+        run: dotnet build LocalSoundboard.sln --configuration Release --no-restore
+
+      - name: Publish portable app
+        run: >
+          dotnet publish LocalSoundboard/LocalSoundboard.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output artifacts/publish
+          /p:PublishSingleFile=false
+          /p:DebugType=None
+          /p:DebugSymbols=false
+
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/package | Out-Null
+          Compress-Archive -Path artifacts/publish/* -DestinationPath artifacts/package/LocalSoundboard-win-x64.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocalSoundboard-win-x64
+          path: artifacts/package/LocalSoundboard-win-x64.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/package/LocalSoundboard-win-x64.zip
+          generate_release_notes: true
