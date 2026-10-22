@@ -14,6 +14,10 @@ English version: [README.md](README.md)
 - Buscar por nombre, carpeta o etiqueta.
 - Filtrar por carpeta, favoritos y sonidos recientes.
 - Reproducir un sonido con un clic.
+- Pausar, reanudar y cambiar de posición sin reiniciar el sonido.
+- Ver el tiempo transcurrido y controlar cada sonido por separado en modo mezcla.
+- Crear bancos de sonidos y ordenar sus elementos.
+- Asignar atajos globales de teclado para sonidos, pausa y parada.
 - Detener todo al instante.
 - Elegir el dispositivo de salida de audio.
 - Enviar audio a VB-Audio Virtual Cable.
@@ -24,7 +28,7 @@ English version: [README.md](README.md)
 
 ## Descargar y Ejecutar
 
-1. Abre la última GitHub Release.
+1. Abre la [última GitHub Release](https://github.com/Ibai-Terron-Castrillo/Simple-Soundboard/releases/latest).
 2. Descarga `LocalSoundboard-win-x64.zip`.
 3. Extrae el ZIP en una carpeta, por ejemplo `C:\Apps\LocalSoundboard`.
 4. Ejecuta `LocalSoundboard.exe`.
@@ -36,9 +40,9 @@ El ZIP de release es self-contained, así que no necesitas instalar .NET por sep
 1. Pulsa `Choose Folder`.
 2. Selecciona la carpeta donde guardas tus sonidos.
 3. Espera a que termine el escaneo.
-4. Elige un dispositivo de salida en el panel derecho.
+4. Abre la pestaña `Audio` del panel derecho y elige un dispositivo de salida.
 5. Ajusta el volumen principal.
-6. Pulsa `Play` en cualquier sonido.
+6. Pulsa el icono de reproducción de cualquier sonido.
 
 Si borras o mueves un archivo, refresca la biblioteca. LocalSoundboard lo mostrará como no disponible hasta que lo restaures o se actualice el estado guardado.
 
@@ -52,7 +56,7 @@ Opciones habituales:
 - Tus altavoces o auriculares.
 - `CABLE Input`: envía audio a VB-Audio Virtual Cable.
 
-LocalSoundboard recuerda el dispositivo elegido. Si el dispositivo se desconecta o desaparece, la app vuelve a la salida predeterminada de Windows.
+LocalSoundboard recuerda el dispositivo elegido. Si no está disponible al iniciar la app o recargar dispositivos, se selecciona la salida predeterminada de Windows. Si desaparece durante la reproducción, recarga dispositivos y elige una salida disponible.
 
 ## Modos de Reproducción
 
@@ -60,6 +64,40 @@ LocalSoundboard recuerda el dispositivo elegido. Si el dispositivo se desconecta
 - `Mix`: permite reproducir varios sonidos al mismo tiempo.
 
 El modo exclusivo suele ser mejor para llamadas de voz. El modo mezcla va bien para efectos superpuestos.
+
+## Controles de Reproducción
+
+El reproductor inferior muestra cada sonido activo, el tiempo transcurrido y su duración.
+
+- El icono de pausa detiene temporalmente un sonido; el de reproducción lo reanuda desde la misma posición.
+- Arrastra la barra de progreso para avanzar o retroceder. Si el sonido estaba pausado, seguirá pausado.
+- El cuadrado termina un sonido. Al reproducirlo otra vez, empezará desde el principio.
+- Los controles de la esquina superior derecha del reproductor pausan, reanudan o detienen todos los sonidos.
+
+En modo mezcla, iniciar otro sonido mantiene pausados los que ya lo estaban.
+
+## Bancos de Sonidos
+
+Los bancos son colecciones personalizadas. Nunca mueven ni borran los archivos originales.
+
+1. Selecciona un sonido y abre la pestaña `Sound`.
+2. Escribe un nombre de banco y pulsa el icono de suma para crearlo.
+3. Selecciona el banco de destino y pulsa `Add Sound`.
+4. Abre la colección desde el filtro `Bank` situado sobre la biblioteca.
+5. Selecciona un sonido y usa las flechas de la pestaña `Sound` para cambiar su orden en ese banco.
+
+Un sonido puede estar en varios bancos. El lápiz renombra el banco de destino; la papelera lo elimina. `Remove Sound` solo retira el sonido del banco seleccionado.
+
+## Atajos Globales
+
+1. Abre `Audio` y activa `Global shortcuts`.
+2. Pulsa un campo de atajo e introduce una combinación que incluya Ctrl, Alt o la tecla Windows.
+3. Configura ahí la pausa/reanudación y la parada globales.
+4. Para asignar un atajo a un sonido, selecciónalo, abre `Sound`, introduce la combinación y pulsa `Save Sound`.
+
+Escape limpia un campo de atajo. La X junto al atajo de un sonido también lo limpia; pulsa `Save Sound` para aplicar ese cambio. Los conflictos con Windows, otras aplicaciones u otros sonidos aparecen en `Audio`. Los atajos disponibles siguen funcionando aunque otro tenga un conflicto. Algunos juegos o aplicaciones elevadas pueden interceptarlos.
+
+En `Sound` también puedes elegir un nombre visible y etiquetas. `Save Sound` guarda estos cambios sin renombrar el archivo original.
 
 ## Usarlo Con Discord
 
@@ -98,7 +136,7 @@ Es más simple, pero da menos control.
 
 LocalSoundboard puede iniciar un pequeño servidor web local. Está pensado solo para redes privadas, como tu Wi-Fi de casa o estudio.
 
-1. Activa `Remote server`.
+1. Abre la pestaña `Remote` y activa `Remote server`.
 2. Deja el puerto `5050` o elige otro.
 3. Opcional: configura un PIN.
 4. Mira la URL que muestra la app, por ejemplo `http://192.168.1.34:5050`.
@@ -109,30 +147,17 @@ La página remota permite:
 - Buscar sonidos.
 - Reproducir sonidos.
 - Parar toda la reproducción.
+- Pausar, reanudar y cambiar la posición de cada sonido.
+- Ver los cambios hechos desde el PC u otro dispositivo sin recargar.
+- Elegir un banco de sonidos.
+- Limpiar la búsqueda con la X del buscador.
 - Filtrar favoritos.
 - Marcar favoritos.
 - Reescanear la biblioteca.
 
 La página remota no sube ni transmite audio. El audio siempre se reproduce en el PC.
 
-## API Local
-
-El mando remoto usa estos endpoints:
-
-- `GET /api/status`
-- `GET /api/sounds`
-- `POST /api/play/{id}`
-- `POST /api/stop`
-- `POST /api/favorite/{id}`
-- `POST /api/rescan`
-
-Si hay un PIN configurado, las peticiones a la API salvo `/api/status` deben incluir:
-
-```http
-X-Soundboard-Pin: 1234
-```
-
-La API no puede reproducir rutas arbitrarias, borrar archivos ni acceder a audio fuera de la biblioteca seleccionada.
+El indicador de conexión avisa si el PC se desconecta y la página intenta reconectar automáticamente. Activa `Start automatically` para que un servidor remoto habilitado vuelva a iniciarse al abrir la app. Al cerrar la app se detienen el audio y el servidor.
 
 ## Configuración
 
@@ -150,6 +175,7 @@ LocalSoundboard recuerda:
 - Favoritos.
 - Sonidos recientes.
 - Etiquetas.
+- Nombres visibles, bancos, orden de los sonidos y atajos de teclado.
 - Modo de reproducción.
 - Preferencia de tema.
 - Puerto del servidor remoto.
@@ -162,7 +188,7 @@ LocalSoundboard recuerda:
 
 1. Comprueba que VB-Audio Virtual Cable está instalado.
 2. Reinicia Windows.
-3. Pulsa `Refresh devices` en LocalSoundboard.
+3. Abre `Audio` y pulsa `Reload Devices` en LocalSoundboard.
 4. Busca un dispositivo parecido a `CABLE Input`.
 
 ### Discord No Escucha la Soundboard
@@ -186,28 +212,6 @@ LocalSoundboard recuerda:
 3. Si está corrupto, conviértelo de nuevo a `.wav` o `.mp3`.
 4. Para `.flac` y `.m4a`, el soporte puede depender de los codecs instalados en Windows.
 
-## Compilar Desde Código
+## Desarrollo y Contribuciones
 
-Requisitos:
-
-- Windows 10 u 11.
-- .NET SDK 8 o superior.
-
-```powershell
-dotnet restore LocalSoundboard.sln
-dotnet build LocalSoundboard.sln -c Release
-dotnet run --project LocalSoundboard/LocalSoundboard.csproj
-```
-
-## Crear un ZIP Portable
-
-```powershell
-dotnet publish LocalSoundboard/LocalSoundboard.csproj `
-  -c Release `
-  -r win-x64 `
-  --self-contained true `
-  -o artifacts/publish `
-  /p:PublishSingleFile=false
-
-Compress-Archive -Path artifacts/publish/* -DestinationPath artifacts/LocalSoundboard-win-x64.zip -Force
-```
+Las instrucciones para compilar, ejecutar pruebas, usar la API local y generar releases están en la [guía de desarrollo](docs/DEVELOPMENT.md), en inglés.

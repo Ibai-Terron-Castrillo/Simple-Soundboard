@@ -14,6 +14,10 @@ Spanish version: [README.es.md](README.es.md)
 - Search sounds by name, folder, or tag.
 - Filter by folder, favorites, and recently played sounds.
 - Play a sound with one click.
+- Pause, resume, and seek without restarting a sound.
+- See elapsed time and control each sound separately in mix mode.
+- Organize sounds into custom banks and reorder them.
+- Assign global keyboard shortcuts, including pause and stop.
 - Stop everything instantly.
 - Choose the audio output device.
 - Send audio to VB-Audio Virtual Cable.
@@ -24,7 +28,7 @@ Spanish version: [README.es.md](README.es.md)
 
 ## Download and Run
 
-1. Open the latest GitHub Release.
+1. Open the [latest GitHub Release](https://github.com/Ibai-Terron-Castrillo/Simple-Soundboard/releases/latest).
 2. Download `LocalSoundboard-win-x64.zip`.
 3. Extract the ZIP to a folder such as `C:\Apps\LocalSoundboard`.
 4. Run `LocalSoundboard.exe`.
@@ -36,9 +40,9 @@ The release ZIP is self-contained, so you do not need to install .NET separately
 1. Click `Choose Folder`.
 2. Select the folder where your sound files are stored.
 3. Wait for the scan to finish.
-4. Pick an output device in the right panel.
+4. Open the `Audio` tab on the right and pick an output device.
 5. Adjust the main volume.
-6. Click `Play` on any sound.
+6. Click the play icon beside any sound.
 
 If a file is deleted or moved, refresh the library. LocalSoundboard will show it as unavailable until it is restored or removed from the saved library state.
 
@@ -52,7 +56,7 @@ Common choices:
 - Your speakers or headphones.
 - `CABLE Input`: sends audio into VB-Audio Virtual Cable.
 
-LocalSoundboard remembers your selected output device. If the device is unplugged or removed, the app falls back to the Windows default output.
+LocalSoundboard remembers your selected output device. If it is missing when the app starts or you reload devices, the app falls back to the Windows default output. If it disappears during playback, reload devices and select an available output.
 
 ## Playback Modes
 
@@ -60,6 +64,40 @@ LocalSoundboard remembers your selected output device. If the device is unplugge
 - `Mix`: several sounds can play at the same time.
 
 Exclusive mode is usually better for voice calls. Mix mode is useful for layered effects.
+
+## Playback Controls
+
+The player at the bottom shows every active sound, its elapsed time, and its duration.
+
+- Use the pause icon to pause a sound and the play icon to resume from the same position.
+- Drag a sound's progress slider to move forward or backward. Seeking while paused keeps it paused.
+- Use the square stop icon to finish a sound. Playing it again starts from the beginning.
+- The controls at the top right of the player pause/resume or stop all sounds.
+
+In mix mode, starting another sound leaves paused sounds paused. Each sound has its own controls.
+
+## Sound Banks
+
+Banks are custom collections; they never move or delete your audio files.
+
+1. Select a sound and open the `Sound` tab.
+2. Enter a bank name and click the plus icon to create it.
+3. Select the target bank and click `Add Sound`.
+4. Use the `Bank` filter above the library to open a collection.
+5. Select a sound and use the up/down arrows in the `Sound` tab to change its order in that bank.
+
+You can add a sound to several banks. The pencil and trash icons rename or remove the selected target bank. `Remove Sound` only removes membership in that bank.
+
+## Global Shortcuts
+
+1. Open `Audio` and enable `Global shortcuts`.
+2. Click a shortcut field and press a combination containing Ctrl, Alt, or the Windows key.
+3. Set the global pause/resume and stop shortcuts there.
+4. To assign a sound shortcut, select the sound, open `Sound`, capture the shortcut, and click `Save Sound`.
+
+Escape clears a shortcut field. The X beside a sound shortcut also clears it; click `Save Sound` to apply that change. Conflicts with Windows, other apps, or another sound are shown in the `Audio` tab. Available shortcuts continue working if another shortcut conflicts. Some games or elevated apps may intercept shortcuts.
+
+The `Sound` tab also lets you set a display name and tags. Click `Save Sound` to remember them. This does not rename the original file.
 
 ## Use With Discord
 
@@ -98,7 +136,7 @@ This is simpler, but gives you less control.
 
 LocalSoundboard can start a small local web server for remote control. This is designed for private local networks only, such as your home or studio Wi-Fi.
 
-1. Enable `Remote server`.
+1. Open the `Remote` tab and enable `Remote server`.
 2. Keep port `5050` or choose another port.
 3. Optional: set a PIN.
 4. Look at the URL shown in the app, such as `http://192.168.1.34:5050`.
@@ -109,30 +147,17 @@ The remote page lets you:
 - Search sounds.
 - Play sounds.
 - Stop all playback.
+- Pause, resume, and seek individual sounds or pause/resume everything.
+- See playback changes made on the PC or another remote device automatically.
+- Select a sound bank.
+- Clear the search with the X inside the search field.
 - Filter favorites.
 - Mark favorites.
 - Rescan the library.
 
 The remote page does not upload or stream audio. Audio always plays on the PC.
 
-## Local API
-
-The remote control uses these endpoints:
-
-- `GET /api/status`
-- `GET /api/sounds`
-- `POST /api/play/{id}`
-- `POST /api/stop`
-- `POST /api/favorite/{id}`
-- `POST /api/rescan`
-
-If a PIN is configured, API requests except `/api/status` must include:
-
-```http
-X-Soundboard-Pin: 1234
-```
-
-The API cannot play arbitrary file paths, delete files, or access audio outside the selected library folder.
+The connection indicator shows when the PC disconnects and the page tries to reconnect automatically. Enable `Start automatically` if you want an enabled remote server to start again next time you open the PC app. Closing the PC app stops playback and the remote server.
 
 ## Settings Location
 
@@ -150,6 +175,7 @@ LocalSoundboard remembers:
 - Favorites.
 - Recently played sounds.
 - Tags.
+- Display names, sound banks, bank order, and keyboard shortcuts.
 - Playback mode.
 - Theme preference.
 - Remote server port.
@@ -162,7 +188,7 @@ LocalSoundboard remembers:
 
 1. Make sure VB-Audio Virtual Cable is installed.
 2. Restart Windows.
-3. Click `Refresh devices` in LocalSoundboard.
+3. Open `Audio` and click `Reload Devices` in LocalSoundboard.
 4. Look for a device named similar to `CABLE Input`.
 
 ### Discord Cannot Hear the Soundboard
@@ -186,41 +212,6 @@ LocalSoundboard remembers:
 3. If the file is corrupt, convert it again to `.wav` or `.mp3`.
 4. For `.flac` and `.m4a`, Windows media support may depend on installed codecs.
 
-## Build From Source
+## Building and Contributing
 
-Requirements:
-
-- Windows 10 or Windows 11.
-- .NET SDK 8 or later.
-
-```powershell
-dotnet restore LocalSoundboard.sln
-dotnet build LocalSoundboard.sln -c Release
-dotnet run --project LocalSoundboard/LocalSoundboard.csproj
-```
-
-## Create a Portable ZIP
-
-```powershell
-dotnet publish LocalSoundboard/LocalSoundboard.csproj `
-  -c Release `
-  -r win-x64 `
-  --self-contained true `
-  -o artifacts/publish `
-  /p:PublishSingleFile=false
-
-Compress-Archive -Path artifacts/publish/* -DestinationPath artifacts/LocalSoundboard-win-x64.zip -Force
-```
-
-## Release Builds
-
-The GitHub Actions workflow at `.github/workflows/release.yml` builds a Windows x64 portable ZIP.
-
-To create a release:
-
-```powershell
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-When the tag workflow succeeds, GitHub creates a Release and attaches `LocalSoundboard-win-x64.zip`.
+Build instructions, tests, the local API, and release packaging are in the [developer guide](docs/DEVELOPMENT.md).
