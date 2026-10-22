@@ -112,10 +112,18 @@
                 <TabItem Header="Remote"><ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
                     <TextBlock Text="Remote control" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,14" />
                     <CheckBox Content="Remote server" IsChecked="{Binding RemoteServerEnabled}" /><CheckBox Content="Start automatically" IsChecked="{Binding StartRemoteServerAutomatically}" Margin="0,0,0,16" />
-                    <TextBlock Text="Port" Style="{StaticResource LabelText}" /><TextBox Text="{Binding ServerPort, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,12" />
-                    <TextBlock Text="Optional PIN" Style="{StaticResource LabelText}" /><TextBox Text="{Binding RemotePin, UpdateSourceTrigger=LostFocus}" Margin="0,0,0,16" />
                     <TextBlock Text="{Binding RemoteStatusText}" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,8" />
-                    <TextBlock Text="{Binding RemoteUrl}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,0,0,16" />
+                    <TextBlock Text="Tablet / phone address" Style="{StaticResource LabelText}" />
+                    <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <ComboBox ItemsSource="{Binding RemoteUrls}" SelectedItem="{Binding RemoteUrl}" IsEnabled="{Binding IsRemoteServerRunning}" ToolTip="Tablet / phone address" AutomationProperties.Name="Tablet / phone address" />
+                        <Button Grid.Column="1" Content="&#xE72C;" Style="{StaticResource IconButton}" Command="{Binding RefreshRemoteAddressesCommand}" ToolTip="Refresh network addresses" AutomationProperties.Name="Refresh network addresses" Margin="8,0,0,0" />
+                    </Grid>
+                    <TextBlock Text="This PC" Style="{StaticResource LabelText}" />
+                    <TextBox Text="{Binding RemoteLocalUrl, Mode=OneWay}" IsReadOnly="True" IsEnabled="{Binding IsRemoteServerRunning}" Margin="0,0,0,16" AutomationProperties.Name="This PC address" />
+                    <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="Port" Style="{StaticResource LabelText}" /><TextBox Text="{Binding ServerPort, UpdateSourceTrigger=LostFocus}" /></StackPanel>
+                        <StackPanel Grid.Column="2"><TextBlock Text="Optional PIN" Style="{StaticResource LabelText}" /><TextBox Text="{Binding RemotePin, UpdateSourceTrigger=LostFocus}" /></StackPanel>
+                    </Grid>
                     <TextBlock Text="For private local networks only." FontSize="12" Foreground="{DynamicResource MutedBrush}" />
                 </StackPanel></ScrollViewer></TabItem>
             </TabControl>

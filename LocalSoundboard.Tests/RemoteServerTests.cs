@@ -11,6 +11,36 @@ namespace LocalSoundboard.Tests;
 public sealed class RemoteServerTests
 {
     [Fact]
+    public async Task RefreshesLanAddressesWithoutStoppingTheServer()
+    {
+        IReadOnlyList<string> addresses = ["http://192.168.1.10:5050"];
+        await using var server = new RemoteControlServer(new Controller(), _ => addresses);
+        var port = FreePort();
+        await server.StartAsync(port);
+        Assert.Equal(addresses, server.LanUrls);
+        Assert.Equal(addresses[0], server.DisplayUrl);
+        addresses = ["http://192.168.1.20:5050"];
+        await server.StartAsync(port);
+        Assert.Equal(addresses, server.LanUrls);
+        using var client = new HttpClient();
+        Assert.True((await client.GetAsync($"http://127.0.0.1:{port}/api/status")).IsSuccessStatusCode);
+        await server.StopAsync();
+        Assert.Empty(server.LanUrls);
+    }
+
+    [Fact]
+    public async Task MissingLanAddressStillAllowsLocalTesting()
+    {
+        await using var server = new RemoteControlServer(new Controller(), _ => []);
+        var port = FreePort();
+        await server.StartAsync(port);
+        Assert.Empty(server.LanUrls);
+        Assert.Equal($"http://localhost:{port}", server.LocalUrl);
+        using var client = new HttpClient();
+        Assert.True((await client.GetAsync(server.LocalUrl + "/api/status")).IsSuccessStatusCode);
+    }
+
+    [Fact]
     public async Task CanStopRestartAndChangePortRepeatedly()
     {
         await using var server = new RemoteControlServer(new Controller());

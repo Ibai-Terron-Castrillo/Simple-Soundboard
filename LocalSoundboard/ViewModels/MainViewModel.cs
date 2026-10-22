@@ -45,7 +45,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
     private int _serverPort = 5050;
     private string _remotePin = string.Empty;
     private string _remoteStatusText = "Remote server inactive";
-    private string _remoteUrl = "http://localhost:5050";
+    private string _remoteUrl = string.Empty;
     private bool _isLoaded;
     private bool _isDisposed;
 
@@ -76,6 +76,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
         ToggleFavoriteCommand = new AsyncRelayCommand(parameter => ToggleFavoriteAsync(parameter as SoundItem), parameter => parameter is SoundItem);
         SaveTagsCommand = new AsyncRelayCommand(SaveSelectedTagsAsync, () => SelectedSound is not null);
         RefreshDevicesCommand = new RelayCommand(RefreshOutputDevices);
+        RefreshRemoteAddressesCommand = new AsyncRelayCommand(() => ApplyRemoteServerStateAsync(), () => RemoteServerEnabled && !_isDisposed);
         ToggleThemeCommand = new RelayCommand(ToggleTheme);
         InitializeOrganization();
     }
@@ -89,6 +90,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
     public ObservableCollection<string> QuickFilters { get; } = [AllSoundsFilter, FavoritesFilter, RecentFilter];
 
     public ObservableCollection<OutputDeviceInfo> OutputDevices { get; } = [];
+
+    public ObservableCollection<string> RemoteUrls { get; } = [];
 
     public ObservableCollection<PlaybackModeOption> PlaybackModeOptions { get; } =
     [
@@ -111,6 +114,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
     public AsyncRelayCommand SaveTagsCommand { get; }
 
     public RelayCommand RefreshDevicesCommand { get; }
+
+    public AsyncRelayCommand RefreshRemoteAddressesCommand { get; }
 
     public RelayCommand ToggleThemeCommand { get; }
 
@@ -229,6 +234,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _remoteServerEnabled, value))
             {
                 _settings.RemoteServerEnabled = value;
+                RefreshRemoteAddressesCommand.RaiseCanExecuteChanged();
                 ScheduleSettingsSave();
                 _ = ApplyRemoteServerStateAsync();
             }
@@ -257,7 +263,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _serverPort, port))
             {
                 _settings.ServerPort = port;
-                RemoteUrl = $"http://localhost:{port}";
+                OnPropertyChanged(nameof(RemoteLocalUrl));
                 ScheduleSettingsSave();
                 if (RemoteServerEnabled)
                 {
@@ -289,8 +295,12 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
     public string RemoteUrl
     {
         get => _remoteUrl;
-        set => SetProperty(ref _remoteUrl, value);
+        set => SetProperty(ref _remoteUrl, value ?? string.Empty);
     }
+
+    public string RemoteLocalUrl => $"http://localhost:{ServerPort}";
+
+    public bool IsRemoteServerRunning => _remoteControlServer?.IsRunning == true;
 
     public string StatusMessage
     {
@@ -552,14 +562,16 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             {
                 await _remoteControlServer.StopAsync(token);
                 RemoteStatusText = "Remote server inactive";
-                RemoteUrl = $"http://localhost:{ServerPort}";
+                UpdateRemoteAddresses();
                 return;
             }
 
             RemoteStatusText = restart ? "Restarting remote server..." : "Starting remote server...";
             await _remoteControlServer.StartAsync(ServerPort, token);
-            RemoteUrl = _remoteControlServer.DisplayUrl;
-            RemoteStatusText = "Remote server active on private LAN";
+            UpdateRemoteAddresses();
+            RemoteStatusText = RemoteUrls.Count > 0
+                ? "Remote server active on private LAN"
+                : "Server active on this PC only. No LAN IPv4 address found.";
         }
         catch (OperationCanceledException) when (_isDisposed || token.IsCancellationRequested)
         {
@@ -569,12 +581,24 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             _settings.RemoteServerEnabled = false;
             _remoteServerEnabled = false;
             OnPropertyChanged(nameof(RemoteServerEnabled));
+            RefreshRemoteAddressesCommand.RaiseCanExecuteChanged();
+            UpdateRemoteAddresses();
             RemoteStatusText = $"Could not start the server: {ex.Message}";
         }
         finally
         {
             if (gateTaken) _remoteGate.Release();
         }
+    }
+
+    private void UpdateRemoteAddresses()
+    {
+        var selected = RemoteUrl;
+        RemoteUrls.Clear();
+        if (IsRemoteServerRunning)
+            foreach (var url in _remoteControlServer!.LanUrls) RemoteUrls.Add(url);
+        RemoteUrl = RemoteUrls.Contains(selected) ? selected : RemoteUrls.FirstOrDefault() ?? string.Empty;
+        OnPropertyChanged(nameof(IsRemoteServerRunning));
     }
 
     private void ToggleTheme()

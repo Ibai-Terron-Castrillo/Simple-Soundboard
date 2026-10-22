@@ -1,6 +1,3 @@
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Text.Json;
 using LocalSoundboard.Models;
 using Microsoft.AspNetCore.Builder;
@@ -19,62 +16,74 @@ public sealed class RemoteControlServer : IAsyncDisposable
     private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IRemoteSoundboardController _controller;
+    private readonly Func<int, IReadOnlyList<string>> _getLanUrls;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private WebApplication? _app;
     private CancellationTokenSource? _streamLifetime;
-    private int _port;
+    private int _port = 5050;
 
     public RemoteControlServer(IRemoteSoundboardController controller)
+        : this(controller, RemoteNetworkDiscovery.GetUrls)
+    {
+    }
+
+    internal RemoteControlServer(IRemoteSoundboardController controller, Func<int, IReadOnlyList<string>> getLanUrls)
     {
         _controller = controller;
+        _getLanUrls = getLanUrls;
     }
 
     public bool IsRunning => _app is not null;
 
-    public string DisplayUrl { get; private set; } = "http://localhost:5050";
+    public IReadOnlyList<string> LanUrls { get; private set; } = [];
+
+    public string LocalUrl => $"http://localhost:{_port}";
+
+    public string DisplayUrl => LanUrls.FirstOrDefault() ?? LocalUrl;
 
     public async Task StartAsync(int port, CancellationToken cancellationToken = default)
     {
         await _lifecycleGate.WaitAsync(cancellationToken);
         try
         {
-        if (_app is not null && _port == port)
-        {
-            return;
-        }
+            if (_app is not null && _port == port)
+            {
+                LanUrls = _getLanUrls(port);
+                return;
+            }
 
-        await StopCoreAsync(cancellationToken);
+            await StopCoreAsync(cancellationToken);
 
-        _port = port;
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
-        {
-            ApplicationName = typeof(RemoteControlServer).Assembly.GetName().Name,
-            Args = []
-        });
+            _port = port;
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                ApplicationName = typeof(RemoteControlServer).Assembly.GetName().Name,
+                Args = []
+            });
 
-        builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
-        builder.Logging.ClearProviders();
-        builder.Services.Configure<HostOptions>(options =>
-        {
-            options.ShutdownTimeout = ShutdownTimeout;
-        });
-        builder.Services.Configure<JsonOptions>(options =>
-        {
-            options.SerializerOptions.WriteIndented = false;
-        });
+            builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+            builder.Logging.ClearProviders();
+            builder.Services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = ShutdownTimeout;
+            });
+            builder.Services.Configure<JsonOptions>(options =>
+            {
+                options.SerializerOptions.WriteIndented = false;
+            });
 
-        var app = builder.Build();
-        ConfigureRoutes(app);
+            var app = builder.Build();
+            ConfigureRoutes(app);
 
-        try { await app.StartAsync(cancellationToken); }
-        catch
-        {
-            await app.DisposeAsync();
-            throw;
-        }
-        _app = app;
-        _streamLifetime = new CancellationTokenSource();
-        DisplayUrl = GetDisplayUrl(port);
+            try { await app.StartAsync(cancellationToken); }
+            catch
+            {
+                await app.DisposeAsync();
+                throw;
+            }
+            _app = app;
+            _streamLifetime = new CancellationTokenSource();
+            LanUrls = _getLanUrls(port);
         }
         finally { _lifecycleGate.Release(); }
     }
@@ -95,6 +104,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
 
         var app = _app;
         _app = null;
+        LanUrls = [];
         if (_streamLifetime is not null)
         {
             await _streamLifetime.CancelAsync();
@@ -296,19 +306,4 @@ public sealed class RemoteControlServer : IAsyncDisposable
         };
     }
 
-    private static string GetDisplayUrl(int port)
-    {
-        var localAddress = NetworkInterface.GetAllNetworkInterfaces()
-            .Where(adapter => adapter.OperationalStatus == OperationalStatus.Up
-                && adapter.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .SelectMany(adapter => adapter.GetIPProperties().UnicastAddresses)
-            .Where(address => address.Address.AddressFamily == AddressFamily.InterNetwork
-                && !IPAddress.IsLoopback(address.Address))
-            .Select(address => address.Address.ToString())
-            .FirstOrDefault();
-
-        return localAddress is null
-            ? $"http://localhost:{port}"
-            : $"http://{localAddress}:{port}";
-    }
 }

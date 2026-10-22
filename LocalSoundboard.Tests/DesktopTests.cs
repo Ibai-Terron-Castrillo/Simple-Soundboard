@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Http;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Interop;
@@ -16,6 +17,47 @@ namespace LocalSoundboard.Tests;
 [Collection("Desktop")]
 public sealed class DesktopTests
 {
+    [Fact]
+    public Task RemotePanelNeverOffersLocalhostAsTheTabletAddress() => StaHost.Run(async () =>
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "LocalSoundboard-network-" + Guid.NewGuid());
+        var settings = new SettingsService(directory);
+        var port = RemoteServerTests.FreePort();
+        await settings.SaveAsync(new() { ServerPort = port });
+        IReadOnlyList<string> addresses = [];
+        var vm = new MainViewModel(settings, new AudioLibraryService(), new PlaybackService());
+        var server = new RemoteControlServer(vm, _ => addresses);
+        vm.AttachRemoteServer(server);
+        try
+        {
+            await vm.LoadAsync();
+            Assert.False(vm.IsRemoteServerRunning);
+            Assert.Empty(vm.RemoteUrl);
+            Assert.Empty(vm.RemoteUrls);
+            vm.RemoteServerEnabled = true;
+            await Until(() => vm.IsRemoteServerRunning);
+            Assert.Empty(vm.RemoteUrls);
+            Assert.Contains("No LAN IPv4", vm.RemoteStatusText);
+            addresses = [$"http://192.168.1.10:{port}", $"http://192.168.56.1:{port}"];
+            vm.RefreshRemoteAddressesCommand.Execute(null);
+            await Until(() => vm.RemoteUrls.Count == 2);
+            Assert.Equal(addresses[0], vm.RemoteUrl);
+            vm.RemoteUrl = addresses[1];
+            vm.RefreshRemoteAddressesCommand.Execute(null);
+            await Until(() => vm.RefreshRemoteAddressesCommand.CanExecute(null));
+            Assert.Equal(addresses[1], vm.RemoteUrl);
+            vm.RemoteServerEnabled = false;
+            await Until(() => vm.RemoteStatusText == "Remote server inactive");
+            Assert.Empty(vm.RemoteUrl);
+            Assert.Empty(vm.RemoteUrls);
+            Assert.False(vm.IsRemoteServerRunning);
+            vm.ServerPort = RemoteServerTests.FreePort();
+            Assert.Equal($"http://localhost:{vm.ServerPort}", vm.RemoteLocalUrl);
+            Assert.Empty(vm.RemoteUrl);
+        }
+        finally { await vm.DisposeAsync(); Directory.Delete(directory, true); }
+    });
+
     [Fact]
     public Task GlobalHotkeysReportConflictsAndUnregisterOnDispose() => StaHost.Run(() =>
     {
@@ -97,20 +139,28 @@ public sealed class DesktopTests
         await settings.SaveAsync(new());
         var vm = new MainViewModel(settings, new AudioLibraryService(), new PlaybackService());
         var window = new MainWindow(vm);
+        var port = RemoteServerTests.FreePort();
+        vm.AttachRemoteServer(new RemoteControlServer(vm, port => [$"http://192.168.100.100:{port}"]));
         try
         {
             await vm.LoadAsync();
+            vm.ServerPort = port;
+            vm.RemoteServerEnabled = true;
+            await Until(() => vm.IsRemoteServerRunning);
             vm.Sounds.Add(new() { Id = "preview", Name = "Stream intro", FullPath = "intro.wav", RelativePath = "Stream/intro.wav", Extension = "WAV", IsAvailable = true });
             vm.SelectedSound = vm.Sounds[0];
             using var renderPlayer = new PlaybackService();
             vm.ActiveSessions.Add(new(new(Guid.NewGuid(), "preview", "Stream intro", false, 12, 90), renderPlayer));
             vm.ActiveSessions.Add(new(new(Guid.NewGuid(), "preview2", "A longer ambient sound for the stream", true, 32, 120), renderPlayer));
             var root = (FrameworkElement)window.Content;
+            var tabs = Descendants<TabControl>(root).Single();
             var output = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../artifacts/ui-tests"));
             Directory.CreateDirectory(output);
             foreach (var dark in new[] { false, true })
             foreach (var size in new[] { new Size(1000, 680), new Size(1240, 820) })
+            foreach (var remote in new[] { false, true })
             {
+                tabs.SelectedIndex = remote ? 2 : 0;
                 ThemeManager.Apply(window, dark);
                 root.Measure(size);
                 root.Arrange(new Rect(size));
@@ -119,13 +169,29 @@ public sealed class DesktopTests
                 bitmap.Render(root);
                 var encoder = new PngBitmapEncoder();
                 encoder.Frames.Add(BitmapFrame.Create(bitmap));
-                using var stream = File.Create(Path.Combine(output, $"desktop-{(dark ? "dark" : "light")}-{size.Width}.png"));
+                using var stream = File.Create(Path.Combine(output, $"desktop-{(remote ? "remote-" : "")}{(dark ? "dark" : "light")}-{size.Width}.png"));
                 encoder.Save(stream);
                 Assert.Equal(size.Width, root.ActualWidth);
+                if (remote)
+                {
+                    var address = Descendants<ComboBox>(root).Single(combo => ReferenceEquals(combo.ItemsSource, vm.RemoteUrls));
+                    Assert.Equal(vm.RemoteUrl, address.SelectedItem);
+                    Assert.Contains(Descendants<TextBlock>(address), text => text.Text == vm.RemoteUrl);
+                }
             }
         }
         finally { await vm.DisposeAsync(); window.Close(); Directory.Delete(directory, true); }
     });
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
 
     private static async Task Until(Func<bool> condition)
     {

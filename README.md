@@ -139,8 +139,10 @@ LocalSoundboard can start a small local web server for remote control. This is d
 1. Open the `Remote` tab and enable `Remote server`.
 2. Keep port `5050` or choose another port.
 3. Optional: set a PIN.
-4. Look at the URL shown in the app, such as `http://192.168.1.34:5050`.
+4. Use the `Tablet / phone address`, such as `http://192.168.1.34:5050`. If the PC has several network adapters, select the address for the Wi-Fi or Ethernet network shared with your tablet.
 5. Open that URL on a phone or tablet connected to the same network.
+
+`This PC` is a separate address for testing on the computer itself. Do not use `localhost` on your tablet: it points to the tablet, not the PC. If you change networks, use the refresh icon next to the tablet address. An inactive server has no tablet address; enable `Remote server` first.
 
 The remote page lets you:
 
@@ -204,6 +206,7 @@ LocalSoundboard remembers:
 2. Use the IP address shown in LocalSoundboard, not `localhost`.
 3. Allow LocalSoundboard through Windows Firewall if prompted.
 4. Check that the selected port is not already in use.
+5. If the page opens on the PC but not on the tablet, check that Windows Firewall allows LocalSoundboard on your private network. Do not disable the firewall or open a port on your router.
 
 ### A Sound Does Not Play
 
