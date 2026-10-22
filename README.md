@@ -211,7 +211,3 @@ LocalSoundboard remembers:
 2. Try opening it in another media player.
 3. If the file is corrupt, convert it again to `.wav` or `.mp3`.
 4. For `.flac` and `.m4a`, Windows media support may depend on installed codecs.
-
-## Building and Contributing
-
-Build instructions, tests, the local API, and release packaging are in the [developer guide](docs/DEVELOPMENT.md).
