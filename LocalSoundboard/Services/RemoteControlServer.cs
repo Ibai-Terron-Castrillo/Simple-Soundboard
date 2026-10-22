@@ -17,7 +17,9 @@ public sealed class RemoteControlServer : IAsyncDisposable
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromMilliseconds(750);
 
     private readonly IRemoteSoundboardController _controller;
+    private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
     private WebApplication? _app;
+    private CancellationTokenSource? _streamLifetime;
     private int _port;
 
     public RemoteControlServer(IRemoteSoundboardController controller)
@@ -31,12 +33,15 @@ public sealed class RemoteControlServer : IAsyncDisposable
 
     public async Task StartAsync(int port, CancellationToken cancellationToken = default)
     {
+        await _lifecycleGate.WaitAsync(cancellationToken);
+        try
+        {
         if (_app is not null && _port == port)
         {
             return;
         }
 
-        await StopAsync(cancellationToken);
+        await StopCoreAsync(cancellationToken);
 
         _port = port;
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -59,12 +64,27 @@ public sealed class RemoteControlServer : IAsyncDisposable
         var app = builder.Build();
         ConfigureRoutes(app);
 
-        await app.StartAsync(cancellationToken);
+        try { await app.StartAsync(cancellationToken); }
+        catch
+        {
+            await app.DisposeAsync();
+            throw;
+        }
         _app = app;
+        _streamLifetime = new CancellationTokenSource();
         DisplayUrl = GetDisplayUrl(port);
+        }
+        finally { _lifecycleGate.Release(); }
     }
 
     public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        await _lifecycleGate.WaitAsync(cancellationToken);
+        try { await StopCoreAsync(cancellationToken); }
+        finally { _lifecycleGate.Release(); }
+    }
+
+    private async Task StopCoreAsync(CancellationToken cancellationToken)
     {
         if (_app is null)
         {
@@ -73,6 +93,12 @@ public sealed class RemoteControlServer : IAsyncDisposable
 
         var app = _app;
         _app = null;
+        if (_streamLifetime is not null)
+        {
+            await _streamLifetime.CancelAsync();
+            _streamLifetime.Dispose();
+            _streamLifetime = null;
+        }
         using var shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         shutdownCts.CancelAfter(ShutdownTimeout);
 

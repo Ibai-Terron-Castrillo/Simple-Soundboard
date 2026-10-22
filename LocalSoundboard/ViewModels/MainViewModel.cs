@@ -9,7 +9,7 @@ using Forms = System.Windows.Forms;
 
 namespace LocalSoundboard.ViewModels;
 
-public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposable, IRemoteSoundboardController
+public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, IRemoteSoundboardController
 {
     private const string AllCategories = "All folders";
     private const string AllSoundsFilter = "All";
@@ -22,6 +22,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     private readonly SemaphoreSlim _remoteGate = new(1, 1);
     private readonly SemaphoreSlim _settingsGate = new(1, 1);
     private readonly CancellationTokenSource _lifetimeCts = new();
+    private Task _loadTask = Task.CompletedTask;
+    private Task _scanTask = Task.CompletedTask;
+    private Task _playTask = Task.CompletedTask;
+    private Task? _shutdownTask;
     private AppSettings _settings = new();
     private RemoteControlServer? _remoteControlServer;
     private string _libraryPath = string.Empty;
@@ -41,7 +45,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     private string _remotePin = string.Empty;
     private string _remoteStatusText = "Remote server inactive";
     private string _remoteUrl = "http://localhost:5050";
-    private bool _isPlaybackPaused;
     private bool _isLoaded;
     private bool _isDisposed;
 
@@ -54,6 +57,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         _libraryService = libraryService;
         _playbackService = playbackService;
         _playbackService.PlaybackError += HandlePlaybackError;
+        InitializePlayer();
 
         SoundsView = CollectionViewSource.GetDefaultView(Sounds);
         SoundsView.Filter = FilterSound;
@@ -290,17 +294,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         set => SetProperty(ref _statusMessage, value);
     }
 
-    public bool IsPlaybackPaused
-    {
-        get => _isPlaybackPaused;
-        private set
-        {
-            if (SetProperty(ref _isPlaybackPaused, value))
-            {
-                OnPropertyChanged(nameof(PauseResumeText));
-            }
-        }
-    }
+    public bool IsPlaybackPaused => _playbackService.IsPaused;
 
     public bool IsDarkMode
     {
@@ -347,7 +341,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         _remoteControlServer = remoteControlServer;
     }
 
-    public async Task LoadAsync()
+    public Task LoadAsync() => _loadTask = LoadCoreAsync();
+
+    private async Task LoadCoreAsync()
     {
         var cancellationToken = _lifetimeCts.Token;
         _settings = await _settingsService.LoadAsync(cancellationToken);
@@ -377,6 +373,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
 
         cancellationToken.ThrowIfCancellationRequested();
         _isLoaded = true;
+        await SaveSettingsAsync(cancellationToken);
         await ApplyRemoteServerStateAsync(cancellationToken: cancellationToken);
     }
 
@@ -422,12 +419,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     {
         if (_playbackService.PauseAll())
         {
-            IsPlaybackPaused = true;
+            RefreshPlayer();
             StatusMessage = "Playback paused.";
             return;
         }
 
-        IsPlaybackPaused = false;
+        RefreshPlayer();
         StatusMessage = "No playback to pause.";
     }
 
@@ -435,21 +432,18 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     {
         if (_playbackService.ResumeAll())
         {
-            IsPlaybackPaused = false;
+            RefreshPlayer();
             StatusMessage = "Playback resumed.";
             return;
         }
 
-        IsPlaybackPaused = false;
+        RefreshPlayer();
         StatusMessage = "No paused playback to resume.";
     }
 
-    public void Dispose()
-    {
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
-    }
+    public ValueTask DisposeAsync() => new(_shutdownTask ??= ShutdownAsync());
 
-    public async ValueTask DisposeAsync()
+    private async Task ShutdownAsync()
     {
         if (_isDisposed)
         {
@@ -457,15 +451,18 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         }
 
         _isDisposed = true;
-        await SaveSettingsAsync(CancellationToken.None);
+        StopPlayerUpdates();
         await _lifetimeCts.CancelAsync();
+        try { await Task.WhenAll(_loadTask, _scanTask, _playTask); }
+        catch (OperationCanceledException) { }
         _playbackService.PlaybackError -= HandlePlaybackError;
         _playbackService.Dispose();
 
         var remoteGateTaken = false;
         try
         {
-            remoteGateTaken = await _remoteGate.WaitAsync(TimeSpan.FromSeconds(1));
+            await _remoteGate.WaitAsync();
+            remoteGateTaken = true;
             if (_remoteControlServer is not null)
             {
                 using var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
@@ -486,13 +483,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
             }
         }
 
-        _settingsGate.Dispose();
-        if (_remoteControlServer is not null)
-        {
-            await _remoteControlServer.DisposeAsync();
-        }
-
-        _remoteGate.Dispose();
+        if (_isLoaded) await SaveSettingsAsync(finalSave: true);
         _lifetimeCts.Dispose();
     }
 
@@ -504,8 +495,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
             return false;
         }
 
-        await PlaySoundAsync(sound);
-        return true;
+        return await PlaySoundAsync(sound);
     }
 
     private async Task<bool> ToggleFavoriteByIdCoreAsync(string id)
@@ -538,9 +528,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCts.Token);
         var token = linkedCts.Token;
 
-        await _remoteGate.WaitAsync(token);
+        var gateTaken = false;
         try
         {
+            await _remoteGate.WaitAsync(token);
+            gateTaken = true;
             if (_isDisposed)
             {
                 return;
@@ -569,6 +561,10 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
             OnPropertyChanged(nameof(RemoteServerEnabled));
             RemoteStatusText = $"Could not start the server: {ex.Message}";
         }
+        finally
+        {
+            if (gateTaken) _remoteGate.Release();
+        }
     }
 
     private void ToggleTheme()
@@ -590,7 +586,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
     private void StopAllPlayback()
     {
         _playbackService.StopAll();
-        IsPlaybackPaused = false;
+        RefreshPlayer();
         StatusMessage = "Playback stopped.";
     }
 
@@ -642,7 +638,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         await RescanLibraryAsync();
     }
 
-    private async Task RescanLibraryAsync(CancellationToken cancellationToken = default)
+    private Task RescanLibraryAsync(CancellationToken cancellationToken = default)
+    {
+        if (_isDisposed) return Task.CompletedTask;
+        if (!_scanTask.IsCompleted) return _scanTask;
+        return _scanTask = ScanCoreAsync(cancellationToken);
+    }
+
+    private async Task ScanCoreAsync(CancellationToken cancellationToken)
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetimeCts.Token);
         var token = linkedCts.Token;
@@ -650,8 +653,21 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         try
         {
             StatusMessage = "Scanning library...";
-            var sounds = await _libraryService.ScanAsync(_settings, token);
+            var scanSettings = SettingsService.Snapshot(_settings);
+            var sounds = await _libraryService.ScanAsync(scanSettings, token);
             token.ThrowIfCancellationRequested();
+
+            foreach (var metadata in scanSettings.Sounds)
+            {
+                if (!_settings.Sounds.Any(current => string.Equals(current.Path, metadata.Path, StringComparison.OrdinalIgnoreCase)))
+                    _settings.Sounds.Add(metadata);
+            }
+            foreach (var sound in sounds)
+            {
+                var latest = _settings.Sounds.FirstOrDefault(current => string.Equals(current.Path, sound.FullPath, StringComparison.OrdinalIgnoreCase));
+                sound.TagsText = string.Join(", ", latest?.Tags ?? []);
+                sound.IsFavorite = _settings.FavoritePaths.Contains(sound.FullPath, StringComparer.OrdinalIgnoreCase);
+            }
 
             Sounds.Clear();
             foreach (var sound in sounds)
@@ -678,15 +694,30 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         }
     }
 
-    private async Task PlaySoundAsync(SoundItem? sound)
+    private Task<bool> PlaySoundAsync(SoundItem? sound)
     {
-        if (sound is null)
+        var task = PlaySoundCoreAsync(sound);
+        _playTask = Task.WhenAll(_playTask, task);
+        return task;
+    }
+
+    private async Task<bool> PlaySoundCoreAsync(SoundItem? sound)
+    {
+        if (sound is null || _isDisposed)
         {
-            return;
+            return false;
         }
 
-        await _playbackService.PlayAsync(sound, _settings.PlaybackMode, _lifetimeCts.Token);
-        IsPlaybackPaused = false;
+        PlaybackResult result;
+        try { result = await _playbackService.PlayAsync(sound, _settings.PlaybackMode, _lifetimeCts.Token); }
+        catch (OperationCanceledException) { return false; }
+        if (_isDisposed) return false;
+        RefreshPlayer();
+        if (!result.Success)
+        {
+            StatusMessage = result.Error ?? "Could not play the sound.";
+            return false;
+        }
         sound.LastPlayedUtc = DateTimeOffset.UtcNow;
         UpdateMetadata(sound);
 
@@ -698,6 +729,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         RefreshCounts();
         SoundsView.Refresh();
         await SaveSettingsAsync();
+        return true;
     }
 
     private async Task ToggleFavoriteAsync(SoundItem? sound)
@@ -816,14 +848,16 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
         metadata.LastPlayedUtc = sound.LastPlayedUtc;
     }
 
-    private async Task SaveSettingsAsync(CancellationToken cancellationToken = default)
+    private async Task SaveSettingsAsync(CancellationToken cancellationToken = default, bool finalSave = false)
     {
+        if (!_isLoaded || (_isDisposed && !finalSave)) return;
+        var snapshot = SettingsService.Snapshot(_settings);
         try
         {
             await _settingsGate.WaitAsync(cancellationToken);
             try
             {
-                await _settingsService.SaveAsync(_settings, cancellationToken);
+                await _settingsService.SaveAsync(snapshot, cancellationToken);
             }
             finally
             {
@@ -844,6 +878,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable, IAsyncDisposa
 
     private void HandlePlaybackError(object? sender, string message)
     {
-        StatusMessage = message;
+        PostToUi(() => StatusMessage = message);
     }
 }

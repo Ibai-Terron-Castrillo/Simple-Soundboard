@@ -13,7 +13,12 @@ public sealed class SettingsService
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public string AppDirectory { get; } = ResolveAppDirectory();
+    public SettingsService(string? appDirectory = null)
+    {
+        AppDirectory = appDirectory ?? ResolveAppDirectory();
+    }
+
+    public string AppDirectory { get; }
 
     public string SettingsPath => Path.Combine(AppDirectory, "settings.json");
 
@@ -29,6 +34,10 @@ public sealed class SettingsService
             await using var stream = File.OpenRead(SettingsPath);
             var settings = await JsonSerializer.DeserializeAsync<AppSettings>(stream, JsonOptions, cancellationToken);
             return Normalize(settings ?? new AppSettings());
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {
@@ -49,6 +58,9 @@ public sealed class SettingsService
 
         File.Move(tempPath, SettingsPath, true);
     }
+
+    public static AppSettings Snapshot(AppSettings settings)
+        => JsonSerializer.Deserialize<AppSettings>(JsonSerializer.SerializeToUtf8Bytes(settings, JsonOptions), JsonOptions)!;
 
     private static AppSettings Normalize(AppSettings settings)
     {

@@ -70,8 +70,7 @@ public sealed class AudioLibraryService
         {
             foreach (var path in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
                          .Where(IsSupportedAudioFile)
-                         .Select(NormalizePath)
-                         .OrderBy(path => path, StringComparer.OrdinalIgnoreCase))
+                         .Select(NormalizePath))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 discoveredPaths.Add(path);
