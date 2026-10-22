@@ -29,6 +29,9 @@ jobs:
       - name: Build
         run: dotnet build LocalSoundboard.sln --configuration Release --no-restore
 
+      - name: Test
+        run: dotnet test LocalSoundboard.Tests/LocalSoundboard.Tests.csproj --configuration Release --no-build --verbosity minimal
+
       - name: Publish portable app
         run: >
           dotnet publish LocalSoundboard/LocalSoundboard.csproj

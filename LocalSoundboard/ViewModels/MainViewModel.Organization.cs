@@ -13,6 +13,7 @@ public sealed partial class MainViewModel
     private string _bankName = string.Empty;
     private string _hotkeyStatusText = "Global shortcuts disabled";
     private long _libraryRevision;
+    private HashSet<string> _selectedBankPaths = new(StringComparer.OrdinalIgnoreCase);
 
     public ObservableCollection<SoundBank> Banks { get; } = [];
     public ObservableCollection<SoundBank> BankFilters { get; } = [];
@@ -170,9 +171,12 @@ public sealed partial class MainViewModel
 
     private void RefreshBankOrder()
     {
+        var order = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        if (SelectedBank is { Id.Length: > 0 } bank)
+            for (var index = 0; index < bank.SoundPaths.Count; index++) order.TryAdd(bank.SoundPaths[index], index);
+        _selectedBankPaths = order.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var sound in Sounds)
-            sound.BankOrder = SelectedBank is { Id.Length: > 0 } bank
-                ? bank.SoundPaths.FindIndex(path => string.Equals(path, sound.FullPath, StringComparison.OrdinalIgnoreCase)) : 0;
+            sound.BankOrder = order.GetValueOrDefault(sound.FullPath, 0);
         SoundsView.Refresh();
     }
 
@@ -215,8 +219,9 @@ public sealed partial class MainViewModel
     {
         var dispatcher = System.Windows.Application.Current.Dispatcher;
         if (!dispatcher.CheckAccess()) return dispatcher.Invoke(GetBankSnapshot);
+        var idsByPath = Sounds.ToDictionary(sound => sound.FullPath, sound => sound.Id, StringComparer.OrdinalIgnoreCase);
         return Banks.Select(bank => new SoundBankSnapshot(bank.Id, bank.Name,
-            bank.SoundPaths.Select(path => Sounds.FirstOrDefault(sound => string.Equals(sound.FullPath, path, StringComparison.OrdinalIgnoreCase))?.Id)
+            bank.SoundPaths.Select(path => idsByPath.GetValueOrDefault(path))
                 .Where(id => id is not null).Cast<string>().ToArray())).ToArray();
     }
 }

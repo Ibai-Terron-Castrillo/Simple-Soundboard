@@ -667,18 +667,20 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             var sounds = await _libraryService.ScanAsync(scanSettings, token);
             token.ThrowIfCancellationRequested();
 
+            var metadataByPath = _settings.Sounds.ToDictionary(metadata => metadata.Path, StringComparer.OrdinalIgnoreCase);
             foreach (var metadata in scanSettings.Sounds)
             {
-                if (!_settings.Sounds.Any(current => string.Equals(current.Path, metadata.Path, StringComparison.OrdinalIgnoreCase)))
+                if (metadataByPath.TryAdd(metadata.Path, metadata))
                     _settings.Sounds.Add(metadata);
             }
+            var favorites = _settings.FavoritePaths.ToHashSet(StringComparer.OrdinalIgnoreCase);
             foreach (var sound in sounds)
             {
-                var latest = _settings.Sounds.FirstOrDefault(current => string.Equals(current.Path, sound.FullPath, StringComparison.OrdinalIgnoreCase));
+                metadataByPath.TryGetValue(sound.FullPath, out var latest);
                 sound.TagsText = string.Join(", ", latest?.Tags ?? []);
                 sound.Alias = latest?.Alias ?? string.Empty;
                 sound.Hotkey = latest?.Hotkey ?? string.Empty;
-                sound.IsFavorite = _settings.FavoritePaths.Contains(sound.FullPath, StringComparer.OrdinalIgnoreCase);
+                sound.IsFavorite = favorites.Contains(sound.FullPath);
             }
 
             Sounds.Clear();
@@ -830,8 +832,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             return false;
         }
 
-        if (SelectedBank is { Id.Length: > 0 } bank
-            && !bank.SoundPaths.Contains(sound.FullPath, StringComparer.OrdinalIgnoreCase)) return false;
+        if (SelectedBank is { Id.Length: > 0 } && !_selectedBankPaths.Contains(sound.FullPath)) return false;
 
         if (!string.Equals(SelectedCategory, AllCategories, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(sound.Category, SelectedCategory, StringComparison.OrdinalIgnoreCase))

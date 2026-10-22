@@ -57,6 +57,7 @@ public sealed class PlaybackTests : IDisposable
         Assert.Equal(12, session.PositionSeconds, 2);
         Assert.Equal(paused, session.IsPaused);
         Assert.True(_outputs[0].Disposed);
+        Assert.Equal(paused ? 0 : 1, _outputs[1].PlayCount);
     }
 
     [Fact]
@@ -162,12 +163,13 @@ public sealed class PlaybackTests : IDisposable
         private long _position;
         public bool FailPause { get; set; }
         public bool Disposed { get; private set; }
+        public int PlayCount { get; private set; }
         public event EventHandler<StoppedEventArgs>? PlaybackStopped;
         public PlaybackState PlaybackState { get; private set; }
         public float Volume { get; set; }
         public WaveFormat OutputWaveFormat { get; private set; } = new WaveFormat(8000, 16, 1);
         public void Init(IWaveProvider provider) => OutputWaveFormat = provider.WaveFormat;
-        public void Play() => PlaybackState = PlaybackState.Playing;
+        public void Play() { PlayCount++; PlaybackState = PlaybackState.Playing; }
         public void Pause()
         {
             if (FailPause) throw new InvalidOperationException("Device removed");

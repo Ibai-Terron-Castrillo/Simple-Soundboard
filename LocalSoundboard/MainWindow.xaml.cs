@@ -106,6 +106,11 @@ public partial class MainWindow : Window
     }
 
     private void EndSeek(object sender, MouseButtonEventArgs e) => CommitSeek(sender);
+    private void BeginKeySeek(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.PageDown or Key.PageUp
+            && sender is Slider { DataContext: PlaybackSessionViewModel session }) session.IsSeeking = true;
+    }
     private void KeySeek(object sender, KeyEventArgs e)
     {
         if (e.Key is Key.Left or Key.Right or Key.Home or Key.End or Key.PageDown or Key.PageUp) CommitSeek(sender);

@@ -115,7 +115,7 @@ public sealed class PlaybackService : IDisposable
         {
             return new(_sessions.Select(session => new PlaybackSessionSnapshot(
                 session.Id, session.Sound.Id, session.Sound.DisplayName,
-                session.Output.PlaybackState == PlaybackState.Paused,
+                session.IsPaused,
                 session.PositionSeconds, session.Reader.TotalTime.TotalSeconds)).ToArray());
         }
     }
@@ -133,8 +133,18 @@ public sealed class PlaybackService : IDisposable
             {
                 try
                 {
-                    if (paused) session.Output.Pause(); else session.Output.Play();
-                    changed |= session.Output.PlaybackState == (paused ? PlaybackState.Paused : PlaybackState.Playing);
+                    if (paused)
+                    {
+                        if (!session.IsPaused) session.Output.Pause();
+                        session.IsPaused |= session.Output.PlaybackState == PlaybackState.Paused;
+                        changed |= session.IsPaused;
+                    }
+                    else
+                    {
+                        session.Output.Play();
+                        session.IsPaused = session.Output.PlaybackState != PlaybackState.Playing;
+                        changed |= !session.IsPaused;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -178,7 +188,7 @@ public sealed class PlaybackService : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             var old = _sessions.FirstOrDefault(session => session.Id == sessionId);
             if (_disposed || old is null) return false;
-            var paused = old.Output.PlaybackState == PlaybackState.Paused;
+            var paused = old.IsPaused;
             Session? replacement = null;
             try
             {
@@ -189,8 +199,8 @@ public sealed class PlaybackService : IDisposable
                     replacement = CreateSession(old.Sound, old.Id, old.Device, seconds);
                     RemoveCore(old);
                     _sessions.Add(replacement);
-                    replacement.Output.Play();
-                    if (paused) replacement.Output.Pause();
+                    replacement.IsPaused = paused;
+                    if (!paused) replacement.Output.Play();
                 }
             }
             catch (Exception ex)
@@ -274,6 +284,7 @@ public sealed class PlaybackService : IDisposable
     private sealed record Session(Guid Id, SoundItem Sound, int Device, WaveStream Reader,
         IWavePlayer Output, VolumeSampleProvider Volume, double StartSeconds)
     {
+        public bool IsPaused { get; set; }
         public double PositionSeconds
         {
             get

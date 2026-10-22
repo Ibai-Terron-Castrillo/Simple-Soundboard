@@ -68,11 +68,17 @@ public sealed class AudioLibraryService
 
         if (libraryExists)
         {
-            foreach (var path in Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
-                         .Where(IsSupportedAudioFile)
-                         .Select(NormalizePath))
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            foreach (var candidate in Directory.EnumerateFiles(root, "*", options))
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!IsSupportedAudioFile(candidate)) continue;
+                var path = NormalizePath(candidate);
                 discoveredPaths.Add(path);
 
                 if (!metadataByPath.TryGetValue(path, out var metadata))
