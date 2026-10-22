@@ -7,4 +7,8 @@ public sealed class SoundMetadata
     public List<string> Tags { get; set; } = [];
 
     public DateTimeOffset? LastPlayedUtc { get; set; }
+
+    public string Alias { get; set; } = string.Empty;
+
+    public string Hotkey { get; set; } = string.Empty;
 }

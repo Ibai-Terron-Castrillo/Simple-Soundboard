@@ -27,4 +27,12 @@ public sealed class AppSettings
     public List<string> RecentPaths { get; set; } = [];
 
     public List<SoundMetadata> Sounds { get; set; } = [];
+
+    public List<SoundBank> Banks { get; set; } = [];
+
+    public bool HotkeysEnabled { get; set; }
+
+    public string PauseHotkey { get; set; } = "Ctrl+Alt+Space";
+
+    public string StopHotkey { get; set; } = "Ctrl+Alt+End";
 }

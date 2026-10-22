@@ -8,6 +8,9 @@ public sealed class SoundItem : ObservableObject
     private bool _isAvailable;
     private DateTimeOffset? _lastPlayedUtc;
     private List<string> _tags = [];
+    private string _alias = string.Empty;
+    private string _hotkey = string.Empty;
+    private int _bankOrder;
 
     public string Id { get; init; } = string.Empty;
 
@@ -22,6 +25,23 @@ public sealed class SoundItem : ObservableObject
     public string RelativePath { get; init; } = string.Empty;
 
     public string Category { get; init; } = string.Empty;
+
+    public string Alias
+    {
+        get => _alias;
+        set
+        {
+            if (SetProperty(ref _alias, value))
+            {
+                OnPropertyChanged(nameof(DisplayName));
+                OnPropertyChanged(nameof(SearchText));
+            }
+        }
+    }
+
+    public string DisplayName => string.IsNullOrWhiteSpace(Alias) ? Name : Alias.Trim();
+    public string Hotkey { get => _hotkey; set => SetProperty(ref _hotkey, value); }
+    public int BankOrder { get => _bankOrder; set => SetProperty(ref _bankOrder, value); }
 
     public bool IsFavorite
     {
@@ -68,7 +88,7 @@ public sealed class SoundItem : ObservableObject
         }
     }
 
-    public string SearchText => $"{Name} {FileName} {Category} {TagsText}".Trim();
+    public string SearchText => $"{Name} {DisplayName} {FileName} {Category} {TagsText}".Trim();
 
     public static List<string> ParseTags(string value)
     {

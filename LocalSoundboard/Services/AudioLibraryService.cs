@@ -135,6 +135,8 @@ public sealed class AudioLibraryService
         };
 
         item.TagsText = string.Join(", ", metadata.Tags ?? []);
+        item.Alias = metadata.Alias;
+        item.Hotkey = metadata.Hotkey;
         return item;
     }
 

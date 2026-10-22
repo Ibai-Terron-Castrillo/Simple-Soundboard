@@ -70,6 +70,9 @@ public sealed class SettingsService
         settings.FavoritePaths ??= [];
         settings.RecentPaths ??= [];
         settings.Sounds ??= [];
+        settings.Banks ??= [];
+        settings.PauseHotkey ??= string.Empty;
+        settings.StopHotkey ??= string.Empty;
         settings.Volume = Math.Clamp(settings.Volume, 0, 1);
 
         if (settings.ServerPort is < 1024 or > 65535)
@@ -96,6 +99,8 @@ public sealed class SettingsService
             {
                 sound.Path = AudioLibraryService.NormalizePath(sound.Path);
                 sound.Tags ??= [];
+                sound.Alias ??= string.Empty;
+                sound.Hotkey ??= string.Empty;
                 sound.Tags = sound.Tags
                     .Where(tag => !string.IsNullOrWhiteSpace(tag))
                     .Select(tag => tag.Trim())
@@ -108,6 +113,20 @@ public sealed class SettingsService
             .Select(group => group.First())
             .OrderBy(sound => sound.Path, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        settings.Banks = settings.Banks
+            .Where(bank => !string.IsNullOrWhiteSpace(bank.Id) && !string.IsNullOrWhiteSpace(bank.Name))
+            .GroupBy(bank => bank.Id, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .Select(bank =>
+            {
+                bank.Name = bank.Name.Trim();
+                bank.SoundPaths = (bank.SoundPaths ?? [])
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
+                    .Select(AudioLibraryService.NormalizePath)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                return bank;
+            }).ToList();
 
         return settings;
     }

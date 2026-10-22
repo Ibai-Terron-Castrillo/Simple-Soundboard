@@ -114,7 +114,7 @@ public sealed class PlaybackService : IDisposable
         lock (_gate)
         {
             return new(_sessions.Select(session => new PlaybackSessionSnapshot(
-                session.Id, session.Sound.Id, session.Sound.Name,
+                session.Id, session.Sound.Id, session.Sound.DisplayName,
                 session.Output.PlaybackState == PlaybackState.Paused,
                 session.PositionSeconds, session.Reader.TotalTime.TotalSeconds)).ToArray());
         }

@@ -26,6 +26,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
     private Task _scanTask = Task.CompletedTask;
     private Task _playTask = Task.CompletedTask;
     private Task? _shutdownTask;
+    private System.Windows.Threading.DispatcherTimer? _settingsSaveTimer;
     private AppSettings _settings = new();
     private RemoteControlServer? _remoteControlServer;
     private string _libraryPath = string.Empty;
@@ -61,8 +62,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
 
         SoundsView = CollectionViewSource.GetDefaultView(Sounds);
         SoundsView.Filter = FilterSound;
+        SoundsView.SortDescriptions.Add(new SortDescription(nameof(SoundItem.BankOrder), ListSortDirection.Ascending));
         SoundsView.SortDescriptions.Add(new SortDescription(nameof(SoundItem.Category), ListSortDirection.Ascending));
-        SoundsView.SortDescriptions.Add(new SortDescription(nameof(SoundItem.Name), ListSortDirection.Ascending));
+        SoundsView.SortDescriptions.Add(new SortDescription(nameof(SoundItem.DisplayName), ListSortDirection.Ascending));
 
         _selectedPlaybackModeOption = PlaybackModeOptions[0];
 
@@ -75,6 +77,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
         SaveTagsCommand = new AsyncRelayCommand(SaveSelectedTagsAsync, () => SelectedSound is not null);
         RefreshDevicesCommand = new RelayCommand(RefreshOutputDevices);
         ToggleThemeCommand = new RelayCommand(ToggleTheme);
+        InitializeOrganization();
     }
 
     public ObservableCollection<SoundItem> Sounds { get; } = [];
@@ -167,6 +170,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _selectedSound, value))
             {
                 SaveTagsCommand.RaiseCanExecuteChanged();
+                RefreshOrganizationCommands();
             }
         }
     }
@@ -181,7 +185,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
                 _playbackService.SetOutputDevice(value);
                 _settings.OutputDeviceNumber = value.DeviceNumber;
                 _settings.OutputDeviceName = value.Name;
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
             }
         }
     }
@@ -197,7 +201,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
                 _playbackService.Volume = rounded;
                 _settings.Volume = rounded;
                 OnPropertyChanged(nameof(VolumePercentText));
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
             }
         }
     }
@@ -212,7 +216,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _selectedPlaybackModeOption, value))
             {
                 _settings.PlaybackMode = value.Mode;
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
             }
         }
     }
@@ -225,7 +229,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _remoteServerEnabled, value))
             {
                 _settings.RemoteServerEnabled = value;
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
                 _ = ApplyRemoteServerStateAsync();
             }
         }
@@ -239,7 +243,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _startRemoteServerAutomatically, value))
             {
                 _settings.StartRemoteServerAutomatically = value;
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
             }
         }
     }
@@ -254,7 +258,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             {
                 _settings.ServerPort = port;
                 RemoteUrl = $"http://localhost:{port}";
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
                 if (RemoteServerEnabled)
                 {
                     _ = ApplyRemoteServerStateAsync(restart: true);
@@ -271,7 +275,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             if (SetProperty(ref _remotePin, value.Trim()))
             {
                 _settings.RemotePin = _remotePin;
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
             }
         }
     }
@@ -305,7 +309,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             {
                 _settings.IsDarkMode = value;
                 OnPropertyChanged(nameof(ThemeToggleText));
-                _ = SaveSettingsAsync();
+                ScheduleSettingsSave();
             }
         }
     }
@@ -350,11 +354,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
         cancellationToken.ThrowIfCancellationRequested();
 
         LibraryPath = _settings.LibraryPath;
-        RemoteServerEnabled = _settings.RemoteServerEnabled;
+        RemoteServerEnabled = _settings.RemoteServerEnabled && _settings.StartRemoteServerAutomatically;
         StartRemoteServerAutomatically = _settings.StartRemoteServerAutomatically;
         ServerPort = _settings.ServerPort;
         RemotePin = _settings.RemotePin;
         IsDarkMode = _settings.IsDarkMode;
+        ReloadBanks();
+        OnPropertyChanged(nameof(HotkeysEnabled));
+        OnPropertyChanged(nameof(PauseHotkey));
+        OnPropertyChanged(nameof(StopHotkey));
 
         _volume = Math.Clamp(_settings.Volume, 0, 1);
         _playbackService.Volume = _volume;
@@ -373,6 +381,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
 
         cancellationToken.ThrowIfCancellationRequested();
         _isLoaded = true;
+        HotkeysChanged?.Invoke(this, EventArgs.Empty);
         await SaveSettingsAsync(cancellationToken);
         await ApplyRemoteServerStateAsync(cancellationToken: cancellationToken);
     }
@@ -452,6 +461,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
 
         _isDisposed = true;
         StopPlayerUpdates();
+        _settingsSaveTimer?.Stop();
         await _lifetimeCts.CancelAsync();
         try { await Task.WhenAll(_loadTask, _scanTask, _playTask); }
         catch (OperationCanceledException) { }
@@ -666,6 +676,8 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             {
                 var latest = _settings.Sounds.FirstOrDefault(current => string.Equals(current.Path, sound.FullPath, StringComparison.OrdinalIgnoreCase));
                 sound.TagsText = string.Join(", ", latest?.Tags ?? []);
+                sound.Alias = latest?.Alias ?? string.Empty;
+                sound.Hotkey = latest?.Hotkey ?? string.Empty;
                 sound.IsFavorite = _settings.FavoritePaths.Contains(sound.FullPath, StringComparer.OrdinalIgnoreCase);
             }
 
@@ -676,7 +688,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             }
 
             RefreshCategories();
+            RefreshBankOrder();
             RefreshCounts();
+            HotkeysChanged?.Invoke(this, EventArgs.Empty);
             SoundsView.Refresh();
             await SaveSettingsAsync(token);
             StatusMessage = $"{AvailableSoundCount} available sounds out of {TotalSoundCount} found.";
@@ -764,9 +778,15 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(SelectedSound.Hotkey)
+            && !GlobalHotkeyService.TryParse(SelectedSound.Hotkey, out _, out _))
+        { StatusMessage = "Use a shortcut with Ctrl, Alt, or Windows."; return; }
+
         UpdateMetadata(SelectedSound);
         SoundsView.Refresh();
-        StatusMessage = $"Tags saved for {SelectedSound.FileName}.";
+        Interlocked.Increment(ref _libraryRevision);
+        HotkeysChanged?.Invoke(this, EventArgs.Empty);
+        StatusMessage = $"Sound settings saved for {SelectedSound.DisplayName}.";
         await SaveSettingsAsync();
     }
 
@@ -797,6 +817,7 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
 
     private void RefreshCounts()
     {
+        Interlocked.Increment(ref _libraryRevision);
         OnPropertyChanged(nameof(TotalSoundCount));
         OnPropertyChanged(nameof(AvailableSoundCount));
         OnPropertyChanged(nameof(FavoriteSoundCount));
@@ -808,6 +829,9 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
         {
             return false;
         }
+
+        if (SelectedBank is { Id.Length: > 0 } bank
+            && !bank.SoundPaths.Contains(sound.FullPath, StringComparer.OrdinalIgnoreCase)) return false;
 
         if (!string.Equals(SelectedCategory, AllCategories, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(sound.Category, SelectedCategory, StringComparison.OrdinalIgnoreCase))
@@ -846,6 +870,24 @@ public sealed partial class MainViewModel : ObservableObject, IAsyncDisposable, 
 
         metadata.Tags = sound.Tags.ToList();
         metadata.LastPlayedUtc = sound.LastPlayedUtc;
+        metadata.Alias = sound.Alias.Trim();
+        metadata.Hotkey = sound.Hotkey.Trim();
+    }
+
+    private void ScheduleSettingsSave()
+    {
+        if (!_isLoaded || _isDisposed) return;
+        if (_settingsSaveTimer is null)
+        {
+            _settingsSaveTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+            _settingsSaveTimer.Tick += async (_, _) =>
+            {
+                _settingsSaveTimer.Stop();
+                await SaveSettingsAsync();
+            };
+        }
+        _settingsSaveTimer.Stop();
+        _settingsSaveTimer.Start();
     }
 
     private async Task SaveSettingsAsync(CancellationToken cancellationToken = default, bool finalSave = false)
