@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LocalSoundboard Remote</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="title-row">
+          <div class="brand">
+            <h1>LocalSoundboard</h1>
+            <p id="library" class="subtitle">Remote control for the PC app</p>
+          </div>
+          <button id="theme" class="theme-toggle" type="button" aria-label="Toggle color theme">
+            <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2"></path>
+              <path d="M12 20v2"></path>
+              <path d="m4.93 4.93 1.41 1.41"></path>
+              <path d="m17.66 17.66 1.41 1.41"></path>
+              <path d="M2 12h2"></path>
+              <path d="M20 12h2"></path>
+              <path d="m6.34 17.66-1.41 1.41"></path>
+              <path d="m19.07 4.93-1.41 1.41"></path>
+            </svg>
+            <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.99 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 20.99 12.79z"></path>
+            </svg>
+            <span id="themeLabel">Light</span>
+          </button>
+        </div>
+
+        <div id="pinBox" class="pin-panel">
+          <input id="pin" placeholder="Remote PIN" autocomplete="one-time-code">
+          <button id="savePin" class="primary" type="button">OK</button>
+        </div>
+
+        <div class="controls">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input id="search" class="search-input" placeholder="Search sounds" autocomplete="off" aria-label="Search sounds">
+            <button id="clearSearch" class="clear-search" type="button" aria-label="Clear search" title="Clear search">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="actions">
+            <button id="favorites" type="button">Favorites</button>
+            <button id="rescan" type="button">Rescan</button>
+          </div>
+        </div>
+
+        <div class="bank-filter">
+          <select id="bank" aria-label="Sound bank"><option value="">All sounds</option></select>
+          <span id="connection" class="connection" role="status">Connecting...</span>
+        </div>
+
+        <div class="status-row">
+          <div id="status" class="status-pill">Connecting...</div>
+          <div id="counts" class="counter-pill">0 sounds</div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="sounds" class="sound-grid" aria-live="polite"></section>
+    </main>
+    <footer class="transport" aria-label="Playback controls">
+      <div class="transport-inner">
+        <div class="transport-header"><strong id="nowPlaying">Nothing playing</strong>
+          <div class="transport-buttons">
+            <button id="pause" class="icon-button" type="button" aria-label="Pause all" title="Pause all" disabled></button>
+            <button id="stop" class="icon-button danger" type="button" aria-label="Stop all" title="Stop all" disabled></button>
+          </div>
+        </div>
+        <div id="sessions" class="sessions"></div>
+      </div>
+    </footer>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -16,6 +16,18 @@ public interface IRemoteSoundboardController
 
     string RemotePin { get; }
 
+    long LibraryRevision { get; }
+
+    PlaybackSnapshot GetPlaybackSnapshot();
+
+    IReadOnlyList<SoundBankSnapshot> GetBankSnapshot();
+
+    Task<bool> SeekFromRemoteAsync(Guid sessionId, double seconds);
+
+    bool StopSession(Guid sessionId);
+
+    bool SetSessionPaused(Guid sessionId, bool paused);
+
     IReadOnlyList<SoundItem> GetSoundSnapshot();
 
     Task<bool> PlayByIdAsync(string id);

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Text.Json;
 using LocalSoundboard.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -15,6 +16,7 @@ namespace LocalSoundboard.Services;
 public sealed class RemoteControlServer : IAsyncDisposable
 {
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromMilliseconds(750);
+    private static readonly JsonSerializerOptions StreamJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IRemoteSoundboardController _controller;
     private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
@@ -124,6 +126,14 @@ public sealed class RemoteControlServer : IAsyncDisposable
     {
         app.Use(async (context, next) =>
         {
+            var origin = context.Request.Headers.Origin.FirstOrDefault();
+            if (HttpMethods.IsPost(context.Request.Method) && origin is not null
+                && (!Uri.TryCreate(origin, UriKind.Absolute, out var originUri)
+                    || !string.Equals(originUri.Authority, context.Request.Host.Value, StringComparison.OrdinalIgnoreCase)))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
             if (RequiresPin(context) && !IsAuthorized(context))
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -135,6 +145,8 @@ public sealed class RemoteControlServer : IAsyncDisposable
         });
 
         app.MapGet("/", () => Results.Content(RemoteWebPage.Html, "text/html; charset=utf-8"));
+        app.MapGet("/styles.css", () => Results.Content(RemoteWebPage.Css, "text/css; charset=utf-8"));
+        app.MapGet("/app.js", () => Results.Content(RemoteWebPage.Script, "text/javascript; charset=utf-8"));
 
         app.MapGet("/api/status", () => Results.Ok(new
         {
@@ -143,13 +155,49 @@ public sealed class RemoteControlServer : IAsyncDisposable
             totalSounds = _controller.TotalSoundCount,
             isDarkMode = _controller.IsDarkMode,
             playbackPaused = _controller.IsPlaybackPaused,
+            playback = _controller.GetPlaybackSnapshot(),
+            libraryRevision = _controller.LibraryRevision,
             pinRequired = !string.IsNullOrWhiteSpace(_controller.RemotePin),
             localOnlyWarning = "Remote control is intended for private local networks."
         }));
 
-        app.MapGet("/api/sounds", (string? search, bool? favorites) =>
+        app.MapGet("/api/banks", () => Results.Ok(_controller.GetBankSnapshot().Select(bank => new { bank.Id, bank.Name })));
+
+        app.MapGet("/api/events", async (HttpContext context) =>
+        {
+            var streamToken = _streamLifetime?.Token ?? new CancellationToken(true);
+            using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, streamToken);
+            context.Response.ContentType = "text/event-stream";
+            context.Response.Headers.CacheControl = "no-store";
+            context.Response.Headers["X-Accel-Buffering"] = "no";
+            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(350));
+            try
+            {
+                do
+                {
+                    if (!string.IsNullOrWhiteSpace(_controller.RemotePin) && !IsAuthorized(context)) break;
+                    var payload = JsonSerializer.Serialize(new
+                    {
+                        playback = _controller.GetPlaybackSnapshot(),
+                        libraryRevision = _controller.LibraryRevision,
+                        isDarkMode = _controller.IsDarkMode
+                    }, StreamJsonOptions);
+                    await context.Response.WriteAsync($"data: {payload}\n\n", linked.Token);
+                    await context.Response.Body.FlushAsync(linked.Token);
+                } while (await timer.WaitForNextTickAsync(linked.Token));
+            }
+            catch (OperationCanceledException) when (linked.IsCancellationRequested) { }
+        });
+
+        app.MapGet("/api/sounds", (string? search, bool? favorites, string? bank) =>
         {
             IEnumerable<SoundItem> sounds = _controller.GetSoundSnapshot();
+            if (!string.IsNullOrEmpty(bank))
+            {
+                var selectedBank = _controller.GetBankSnapshot().FirstOrDefault(item => item.Id == bank);
+                var order = (selectedBank?.SoundIds ?? []).Select((id, index) => (id, index)).ToDictionary(item => item.id, item => item.index);
+                sounds = sounds.Where(sound => order.ContainsKey(sound.Id)).OrderBy(sound => order[sound.Id]);
+            }
             if (!string.IsNullOrWhiteSpace(search))
             {
                 sounds = sounds.Where(sound => sound.SearchText.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -167,8 +215,18 @@ public sealed class RemoteControlServer : IAsyncDisposable
         {
             return await _controller.PlayByIdAsync(id)
                 ? Results.Ok(new { ok = true })
-                : Results.NotFound(new { error = "Sound not found or unavailable" });
+                : Results.UnprocessableEntity(new { error = "Could not start playback. Check the file and audio output on the PC." });
         });
+
+        app.MapPost("/api/sessions/{id:guid}/seek", async (Guid id, SeekRequest request) =>
+            await _controller.SeekFromRemoteAsync(id, request.Seconds)
+                ? Results.Ok(new { ok = true }) : Results.BadRequest(new { error = "Sound is no longer playing or position is invalid." }));
+        app.MapPost("/api/sessions/{id:guid}/stop", (Guid id) =>
+            _controller.StopSession(id) ? Results.Ok(new { ok = true }) : Results.NotFound());
+        app.MapPost("/api/sessions/{id:guid}/pause", (Guid id) =>
+            _controller.SetSessionPaused(id, true) ? Results.Ok(new { ok = true }) : Results.NotFound());
+        app.MapPost("/api/sessions/{id:guid}/resume", (Guid id) =>
+            _controller.SetSessionPaused(id, false) ? Results.Ok(new { ok = true }) : Results.NotFound());
 
         app.MapPost("/api/stop", () =>
         {
@@ -227,7 +285,7 @@ public sealed class RemoteControlServer : IAsyncDisposable
         return new
         {
             sound.Id,
-            sound.Name,
+            name = sound.DisplayName,
             sound.FileName,
             sound.RelativePath,
             sound.Category,
